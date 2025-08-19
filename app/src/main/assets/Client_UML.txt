@@ -1,0 +1,81 @@
+sequenceDiagram
+    actor User
+    participant Client
+    participant OkHttpClient
+    participant API
+
+    Note over User, API: ===== 1. 文件上传 (uploadData) =====
+    User->>Client: uploadData(path, fileName, content, callback)
+    activate Client
+    Client->>Client: 生成requestId, 编码路径/文件名
+    Client->>Client: Base64编码内容
+    Client->>OkHttpClient: PUT请求 (带JSON Body)
+    activate OkHttpClient
+    OkHttpClient->>API: 拦截器链处理 → 发送请求
+    activate API
+    API-->>OkHttpClient: 响应 (201/错误)
+    deactivate API
+    OkHttpClient-->>Client: 返回结果
+    deactivate OkHttpClient
+    alt 成功
+        Client->>User: callback.onSuccess("上传成功")
+    else 失败
+        Client->>User: callback.onFailure("错误详情")
+    end
+    deactivate Client
+
+    Note over User, API: ===== 2. 文件下载 (getData) =====
+    User->>Client: getData(path, fileName, callback)
+    activate Client
+    Client->>Client: 生成requestId, 编码路径
+    Client->>OkHttpClient: GET请求 (列表目录)
+    activate OkHttpClient
+    OkHttpClient->>API: 拦截器链处理 → 发送请求
+    activate API
+    API-->>OkHttpClient: 返回文件列表JSON
+    deactivate API
+    OkHttpClient-->>Client: 解析列表
+    Client->>OkHttpClient: GET请求 (下载文件)
+    OkHttpClient->>API: 拦截器链处理 → 发送请求
+    activate API
+    API-->>OkHttpClient: 返回文件内容
+    deactivate API
+    OkHttpClient-->>Client: 返回内容
+    deactivate OkHttpClient
+    Client->>User: callback.onSuccess(content)
+    deactivate Client
+
+    Note over User, API: ===== 3. 文件更新 (updateData) =====
+    User->>Client: updateData(path, fileName, newContent, callback)
+    activate Client
+    Client->>Client: 生成requestId, 编码路径/文件名
+    Client->>OkHttpClient: GET请求 (获取SHA)
+    activate OkHttpClient
+    OkHttpClient->>API: 拦截器链处理 → 发送请求
+    activate API
+    API-->>OkHttpClient: 返回文件SHA
+    deactivate API
+    OkHttpClient-->>Client: 返回SHA
+    deactivate OkHttpClient
+    Client->>Client: Base64编码新内容
+    Client->>OkHttpClient: PUT请求 (带SHA和JSON)
+    activate OkHttpClient
+    OkHttpClient->>API: 拦截器链处理 → 发送请求
+    activate API
+    API-->>OkHttpClient: 响应 (200/错误)
+    deactivate API
+    OkHttpClient-->>Client: 返回结果
+    deactivate OkHttpClient
+    alt 成功
+        Client->>User: callback.onSuccess("更新成功")
+    else 失败
+        Client->>User: callback.onFailure("错误详情")
+    end
+    deactivate Client
+
+    Note over User, API: ===== 拦截器统一流程 =====
+    loop 拦截器链
+        OkHttpClient->>OkHttpClient: 1. CacheControl: 检查缓存
+        OkHttpClient->>OkHttpClient: 2. Retry: 失败重试 (最多3次)
+        OkHttpClient->>OkHttpClient: 3. Auth: 添加Token头
+    end

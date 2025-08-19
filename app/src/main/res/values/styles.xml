@@ -1,0 +1,85 @@
+<resources>
+    <!-- 应用主题 -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:forceDarkAllowed">false</item>
+        <!-- 状态栏配置 -->
+        <item name="android:statusBarColor">@color/tan</item>
+        <item name="android:windowLightStatusBar">true</item>
+        
+        <!-- 导航栏配置 -->
+        <item name="android:navigationBarColor">@color/tan</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        
+        <!-- 主题色 -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        
+        <!-- 背景 -->
+        <!-- <item name="android:windowBackground">@drawable/app_background</item> -->
+
+        <!-- 对话框配置 -->
+        <item name="materialAlertDialogTheme">@style/AppAlertDialogTheme</item>
+        <item name="android:buttonBarButtonStyle">@style/AppButtonStyle</item>
+    </style>
+
+    <!-- 输入框提示文字样式 -->
+    <style name="InputHintStyle" parent="@style/TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">@color/hint_color</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- 对话框主题 -->
+    <style name="AppAlertDialogTheme" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="buttonBarPositiveButtonStyle">@style/PositiveButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle</item>
+        <item name="shapeAppearance">@style/DialogShape</item>
+    </style>
+
+    <!-- 对话框形状 -->
+    <style name="DialogShape">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
+    </style>
+
+    <!-- 通用按钮样式 -->
+    <style name="AppButtonStyle" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/dialog_button_text</item>
+        <item name="strokeColor">@color/dialog_button_border</item>
+        <item name="strokeWidth">2dp</item>
+        <!-- 最小尺寸 -->
+        <item name="android:minWidth">48dp</item>
+        <item name="android:minHeight">36dp</item>
+    
+        <!-- 内边距 -->
+        <item name="android:paddingHorizontal">8dp</item>
+        <item name="android:paddingVertical">4dp</item>
+    
+        <!-- 字体大小 -->
+        <item name="android:textSize">14sp</item>
+        <!-- 外边距 -->
+        <item name="android:layout_margin">4dp</item>
+
+        <item name="rippleColor">@color/dialog_button_ripple</item>
+        <item name="backgroundTint">@color/dialog_button_bg</item>
+        <item name="shapeAppearanceOverlay">@style/ButtonShape</item>
+    </style>
+
+    <!-- 按钮形状 -->
+    <style name="ButtonShape">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">4dp</item>
+    </style>
+
+    <!-- 确认按钮样式 -->
+    <style name="PositiveButtonStyle" parent="AppButtonStyle">
+        <item name="android:textColor">@color/green_500</item>
+        <item name="strokeColor">@color/green_500</item>
+    </style>
+
+    <!-- 取消按钮样式 -->
+    <style name="NegativeButtonStyle" parent="AppButtonStyle">
+        <item name="android:textColor">@color/red_500</item>
+        <item name="strokeColor">@color/red_500</item>
+    </style>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 消息页ID -->
+    <item name="iv_avatar" type="id" />
+    <item name="tv_sender" type="id" />
+    <item name="fl_content" type="id" />
+    
+    <!-- 聊天室选择页ID -->
+    <item name="room_item_root" type="id" />
+    <item name="room_title" type="id" />
+    <item name="room_creator" type="id" />
+    <item name="room_message" type="id" />
+</resources>
