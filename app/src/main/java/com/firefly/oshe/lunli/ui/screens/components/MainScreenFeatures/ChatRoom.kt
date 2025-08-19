@@ -28,13 +28,16 @@ import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.collections.mutableListOf
 
-class ChatRoom(
+class
+
+ChatRoom(
     private val context: Context,
     private val userData: UserData
 ) {
@@ -56,9 +59,10 @@ class ChatRoom(
 
     private var currentRoomId: String? = null
     private val sharedPref by lazy {
-        context.getSharedPreferences("ChatRoomPrefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences("ChatRoomPrefs_${userData.userId}", Context.MODE_PRIVATE)
     }
     private val userCache = mutableMapOf<String, String>()
+    private var currentSubscription: Job? = null
 
     fun interface OnBackClickListener {
         fun onBackClicked()
@@ -204,7 +208,11 @@ class ChatRoom(
                             )
                         )
                         currentRoomId?.let { roomId ->
-                            SBClient.sendMessage(roomId, userData.userId, markdownText)
+                            SBClient.sendMessage(roomId, userData.userId, markdownText) {
+                                if (!it) {
+                                    Toast.makeText(context, "$currentId: 发送失败", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                         inputEditText.text?.clear()
                     }
@@ -625,19 +633,11 @@ class ChatRoom(
 
     private inner class ChatAdapter : BaseChatAdapter() {
         private val messages = mutableListOf<Message>()
-        private var isInitialized = false
-        init {
-            initializeSystemMessages()
-        }
-
-        private fun initializeSystemMessages() {
-            if (isInitialized) return
-
-            messages.addAll(listOf(
-                Message(
-                    id = "1",
-                    sender = "系统",
-                    content = """
+        private val systemMessages = listOf(
+            Message(
+                id = "1",
+                sender = "系统",
+                content = """
                     ## 欢迎使用Markdown聊天室
                     - 支持层级显示
                     - 支持**粗体**和*斜体*
@@ -664,21 +664,18 @@ class ChatRoom(
                     ```
                     - 其它类型未实现, 后继会逐一实现
                     """.trimIndent()
-                )
             ))
-            isInitialized = true
+
+        init {
+            // TODO:
         }
 
         override fun addMessage(message: Message) {
-            if (!isInitialized) {
-                initializeSystemMessages()
-            }
             messages.add(message)
             notifyItemInserted(messages.size - 1)
         }
 
         fun clearMessages() {
-            val systemMessages = messages.filter { it.sender == "系统" }
             messages.clear()
             messages.addAll(systemMessages)
             notifyDataSetChanged()
@@ -953,13 +950,21 @@ class ChatRoom(
     }
 
     private fun loadRoomMessages(roomId: String) {
+        unsubscribeFromMessages()
+        currentRoomId = roomId
         (chatAdapter as? ChatAdapter)?.clearMessages()
 
         val cachedMessages = loadCachedMessages(roomId)
         cachedMessages.forEach { message ->
-            (chatAdapter as? ChatAdapter)?.addMessage(message)
+            (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
         }
-        CoroutineScope(Dispatchers.IO).launch {
+        subscribeToMessages(roomId)
+    }
+
+    private fun subscribeToMessages(roomId: String) {
+        unsubscribeFromMessages()
+
+        currentSubscription = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val messages = SBClient.fetchMessages(roomId)
                 withContext(Dispatchers.Main) {
@@ -972,7 +977,9 @@ class ChatRoom(
                                     sender = "$senderName (${dbMessage.user_id})",
                                     content = dbMessage.content
                                 )
-                                (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
+                                if (dbMessage.user_id != userData.userId) {
+                                    (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
+                                }
                             }
                         }
                     }
@@ -985,6 +992,11 @@ class ChatRoom(
                 }
             }
         }
+    }
+
+    private fun unsubscribeFromMessages() {
+        currentSubscription?.cancel()
+        currentSubscription = null
     }
 
     private fun loadCachedMessages(roomId: String): List<Message> {
@@ -1001,6 +1013,15 @@ class ChatRoom(
             }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    fun clearCachedMessages() {
+        sharedPref.edit().apply() {
+            sharedPref.all.keys
+                .filter { it.startsWith("room_${userData.userId}") }
+                .forEach { remove(it) }
+            apply()
         }
     }
 

@@ -13,6 +13,7 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -70,14 +71,20 @@ object SBClient {
         }
     }
 
-    fun sendMessage(roomId: String, userId: String, content: String) {
+    fun sendMessage(roomId: String, userId: String, content: String, callback: (Boolean) -> Unit = {}) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.postgrest["messages"].insert(
                     NewMessage(room_id = roomId, user_id = userId, content = content)
                 )
+                withContext(Dispatchers.Main) {
+                    callback(true)
+                }
                 println("Message sent")
             } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(false)
+                }
                 e.printStackTrace()
             }
         }
@@ -96,26 +103,31 @@ object SBClient {
         }
     }
 
-    fun subscribeMessages(roomId: String, onNewMessage: (Message) -> Unit = {}) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val channel = client.realtime.channel("messages:room_$roomId")
+    fun subscribeMessages(roomId: String, onNewMessage: (Message) -> Unit = {}): Job {
+        return CoroutineScope(Dispatchers.IO).launch {
+            try {
 
-            channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                table = "messages"
-                filter = "room_id=eq.$roomId"
-            }.collectLatest { change ->
-                val newMessage = change.record
-                val message = Message(
-                    id = newMessage["id"].toString(),
-                    room_id = newMessage["room_id"].toString(),
-                    user_id = newMessage["user_id"].toString(),
-                    content = newMessage["content"].toString(),
-                    created_at = newMessage["created_at"].toString()
-                )
-                onNewMessage(message)
+                val channel = client.realtime.channel("messages:room_$roomId")
+
+                channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                    table = "messages"
+                    filter = "room_id=eq.$roomId"
+                }.collectLatest { change ->
+                    val newMessage = change.record
+                    val message = Message(
+                        id = newMessage["id"].toString(),
+                        room_id = newMessage["room_id"].toString(),
+                        user_id = newMessage["user_id"].toString(),
+                        content = newMessage["content"].toString(),
+                        created_at = newMessage["created_at"].toString()
+                    )
+                    onNewMessage(message)
+                }
+
+                channel.subscribe()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
-            channel.subscribe()
         }
     }
 }
