@@ -71,11 +71,11 @@ object SBClient {
         }
     }
 
-    fun sendMessage(roomId: String, userId: String, content: String, callback: (Boolean) -> Unit = {}) {
+    fun sendMessage(messageId: String, roomId: String, userId: String, content: String, callback: (Boolean) -> Unit = {}) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.postgrest["messages"].insert(
-                    NewMessage(room_id = roomId, user_id = userId, content = content)
+                    NewMessage(id = messageId, room_id = roomId, user_id = userId, content = content)
                 )
                 withContext(Dispatchers.Main) {
                     callback(true)
@@ -137,7 +137,12 @@ data class User(val id: String, val name: String)
 @Serializable
 data class RoomId(val id: String)
 @Serializable
-data class NewMessage(val room_id: String, val user_id: String, val content: String)
+data class NewMessage(
+    val id: String,
+    val room_id: String,
+    val user_id: String,
+    val content: String
+)
 @Serializable
 data class Message(
     val id: String,
