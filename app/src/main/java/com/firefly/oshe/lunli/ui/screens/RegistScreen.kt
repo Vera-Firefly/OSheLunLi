@@ -175,7 +175,7 @@ class RegistScreen(
 
         return when {
             name.isEmpty() -> showError(1, "用户名不能为空")
-            name.length !in 1..10 -> showError(1, "用户名长度1-10位")
+            name.length !in 1..20 -> showError(1, "用户名长度1-20位")
             id.isEmpty() -> showError(2, "用户ID不能为空")
             id.length !in 7..8 -> showError(2, "用户ID长度应为7位或8位")
             !id.matches(Regex("^\\d+\$")) -> showError(2, "用户ID只能包含数字")

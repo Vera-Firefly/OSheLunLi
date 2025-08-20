@@ -33,11 +33,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 import kotlin.collections.mutableListOf
 
-class
-
-ChatRoom(
+class ChatRoom(
     private val context: Context,
     private val userData: UserData
 ) {
@@ -97,7 +96,6 @@ ChatRoom(
         }
 
     fun createView(): LinearLayout {
-        loadRooms()
         mainView = LinearLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -198,7 +196,7 @@ ChatRoom(
 
                 setOnClickListener {
                     val markdownText = inputEditText.text.toString()
-                    val currentId = System.currentTimeMillis().toString()
+                    val currentId = UUID.randomUUID().toString()
                     if (markdownText.isNotEmpty()) {
                         addMessage(
                             Message(
@@ -208,7 +206,7 @@ ChatRoom(
                             )
                         )
                         currentRoomId?.let { roomId ->
-                            SBClient.sendMessage(roomId, userData.userId, markdownText) {
+                            SBClient.sendMessage(currentId, roomId, userData.userId, markdownText) {
                                 if (!it) {
                                     Toast.makeText(context, "$currentId: 发送失败", Toast.LENGTH_SHORT).show()
                                 }
@@ -667,7 +665,7 @@ ChatRoom(
             ))
 
         init {
-            // TODO:
+            loadRooms()
         }
 
         override fun addMessage(message: Message) {
@@ -765,7 +763,7 @@ ChatRoom(
             // 设置数据
             senderName.text = message.sender
             avatar.setImageResource(
-                if (message.sender == "系统") android.R.drawable.ic_menu_info_details 
+                if (message.sender == "系统") android.R.drawable.ic_menu_info_details
                 else android.R.drawable.sym_def_app_icon
             )
 
@@ -977,7 +975,7 @@ ChatRoom(
                                     sender = "$senderName (${dbMessage.user_id})",
                                     content = dbMessage.content
                                 )
-                                if (dbMessage.user_id != userData.userId) {
+                                if (currentRoomId == roomId) {
                                     (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
                                 }
                             }
