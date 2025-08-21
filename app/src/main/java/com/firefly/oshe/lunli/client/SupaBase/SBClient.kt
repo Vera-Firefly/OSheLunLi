@@ -1,12 +1,16 @@
 package com.firefly.oshe.lunli.client.SupaBase
 
+import android.content.Context
+import android.widget.Toast
 import com.firefly.oshe.lunli.client.Token
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.postgrestRequest
 import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.PostgresChangeFilter
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
@@ -14,8 +18,13 @@ import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
@@ -26,7 +35,7 @@ object SBClient {
     ) {
         install(io.github.jan.supabase.postgrest.Postgrest)
         install(io.github.jan.supabase.realtime.Realtime)
-        httpEngine = Android.create()
+        httpEngine = io.ktor.client.engine.cio.CIO.create()
     }
 
     fun createUser(userId: String, username: String) {
@@ -92,62 +101,69 @@ object SBClient {
 
     suspend fun fetchMessages(roomId: String): List<Message> {
         return withContext(Dispatchers.IO) {
-            client.from("messages")
-                .select {
-                    filter {
-                        eq("room_id", roomId)
-                    }
-                    order("created_at", Order.ASCENDING)
-                }
-                .decodeList<Message>()
-        }
-    }
-
-    fun subscribeMessages(roomId: String, onNewMessage: (Message) -> Unit = {}): Job {
-        return CoroutineScope(Dispatchers.IO).launch {
             try {
-
-                val channel = client.realtime.channel("messages:room_$roomId")
-
-                channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                    table = "messages"
-                    filter = "room_id=eq.$roomId"
-                }.collectLatest { change ->
-                    val newMessage = change.record
-                    val message = Message(
-                        id = newMessage["id"].toString(),
-                        room_id = newMessage["room_id"].toString(),
-                        user_id = newMessage["user_id"].toString(),
-                        content = newMessage["content"].toString(),
-                        created_at = newMessage["created_at"].toString()
-                    )
-                    onNewMessage(message)
-                }
-
-                channel.subscribe()
+                client.from("messages")
+                    .select {
+                        filter {
+                            eq("room_id", roomId)
+                        }
+                        order("created_at", Order.ASCENDING)
+                    }
+                    .decodeList<Message>()
             } catch (e: Exception) {
-                e.printStackTrace()
+                emptyList()
             }
         }
     }
+
+    // SupaBase数据库并未实现RealTime, 暂时搁置
+    fun subscribeMessages(roomId: String): Flow<Message> = callbackFlow {
+        val channel = client.realtime.channel("messages:$roomId")
+        channel.subscribe()
+        val job = launch {
+            channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "messages"
+            }.collect { change ->
+                val newMessage = change.record
+                val message = Message(
+                    id = newMessage["id"]?.toString().orEmpty(),
+                    room_id = newMessage["room_id"]?.toString().orEmpty(),
+                    user_id = newMessage["user_id"]?.toString().orEmpty(),
+                    content = newMessage["content"]?.toString().orEmpty(),
+                    created_at = newMessage["created_at"]?.toString().orEmpty()
+                )
+                println("Received message: $message")
+                trySend(message)
+            }
+        }
+
+        awaitClose {
+            println("Unsubscribed from messages")
+            job.cancel()
+            launch { channel.unsubscribe() }
+        }
+    }.flowOn(Dispatchers.IO)
+
+
+    @Serializable
+    data class User(val id: String, val name: String)
+    @Serializable
+    data class RoomId(val id: String)
+    @Serializable
+    data class NewMessage(
+        val id: String,
+        val room_id: String,
+        val user_id: String,
+        val content: String
+    )
+    @Serializable
+    data class Message(
+        val id: String,
+        val room_id: String,
+        val user_id: String,
+        val content: String,
+        val created_at: String
+    )
+
 }
 
-@Serializable
-data class User(val id: String, val name: String)
-@Serializable
-data class RoomId(val id: String)
-@Serializable
-data class NewMessage(
-    val id: String,
-    val room_id: String,
-    val user_id: String,
-    val content: String
-)
-@Serializable
-data class Message(
-    val id: String,
-    val room_id: String,
-    val user_id: String,
-    val content: String,
-    val created_at: String
-)

@@ -29,11 +29,14 @@ import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.UUID
+import java.text.*
+import java.util.*
 import kotlin.collections.mutableListOf
 
 class ChatRoom(
@@ -61,7 +64,11 @@ class ChatRoom(
         context.getSharedPreferences("ChatRoomPrefs_${userData.userId}", Context.MODE_PRIVATE)
     }
     private val userCache = mutableMapOf<String, String>()
+    private var messageSubscription: Job? = null
     private var currentSubscription: Job? = null
+
+    private var pollingJob: Job? = null
+    private var lastPollTime: Long = 0
 
     fun interface OnBackClickListener {
         fun onBackClicked()
@@ -401,6 +408,7 @@ class ChatRoom(
                     .setAllCornerSizes(8f.dp)
                     .build()
                 setOnClickListener {
+                    unsubscribeFromMessages()
                     (chatAdapter as? ChatAdapter)?.getMessages()?.let { messages ->
                         saveMessagesToCache(roomInfo.id, messages)
                     }
@@ -956,43 +964,208 @@ class ChatRoom(
         cachedMessages.forEach { message ->
             (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
         }
-        subscribeToMessages(roomId)
+        loadRoomMessagesll(roomId)
     }
 
-    private fun subscribeToMessages(roomId: String) {
+    private fun loadRoomMessagesll(roomId: String) {
         unsubscribeFromMessages()
 
-        currentSubscription = CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val messages = SBClient.fetchMessages(roomId)
-                withContext(Dispatchers.Main) {
-                    messages.forEach { dbMessage ->
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val senderName = getUserName(dbMessage.user_id)
-                            withContext(Dispatchers.Main) {
-                                val message = Message(
-                                    id = dbMessage.id,
-                                    sender = "$senderName (${dbMessage.user_id})",
-                                    content = dbMessage.content
+        messageSubscription = CoroutineScope(Dispatchers.Main).launch {
+            loadExistingMessages(roomId)
+            // subscribeToMessages(roomId)
+            startPollingMessages(roomId)
+        }
+    }
+
+    /**
+     * 订阅消息: 功能不可用, 待SupaBase数据路完善RealTime后可使用
+     */
+    private fun subscribeToMessages(roomId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentSubscription = launch {
+                try {
+                    SBClient.subscribeMessages(roomId).collect { message ->
+                        val processedMessage = withContext(Dispatchers.IO) {
+                            val senderName = getUserName(message.user_id)
+                            Message(
+                                id = message.id,
+                                sender = "$senderName (${message.user_id})",
+                                content = message.content
+                            )
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            if (currentRoomId == roomId) {
+                                (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(
+                                    processedMessage
                                 )
-                                if (currentRoomId == roomId) {
-                                    (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
-                                }
+                                chatRecyclerView?.scrollToPosition(
+                                    (chatAdapter?.itemCount ?: 1) - 1
+                                )
+                            }
+                            (chatAdapter as? ChatAdapter)?.getMessages()?.let { messages ->
+                                saveMessagesToCache(roomId, messages)
                             }
                         }
                     }
-
-                    SBClient.subscribeMessages(roomId)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "加载消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    if (currentRoomId == roomId) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "订阅消息失败: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                } finally {
+                    Toast.makeText(context, "订阅消息结束", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
+    private fun startPollingMessages(roomId: String) {
+        unsubscribeFromMessages()
+        Toast.makeText(context, "开始轮询消息", Toast.LENGTH_SHORT).show()
+        pollingJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive && currentRoomId == roomId) {
+                try {
+                    val messages = SBClient.fetchMessages(roomId)
+
+                    val newMessages = if (lastPollTime > 0) {
+                        // Toast.makeText(context, "轮询到${messages.size}条新消息", Toast.LENGTH_SHORT).show()
+                        messages.filter { dbMessage ->
+                            val messageTime = parseIso8601WithTimezone(dbMessage.created_at)
+                            messageTime > lastPollTime
+                            // it.created_at.toLongOrNull() ?: 0 > lastPollTime
+                        }
+                    } else {
+                        emptyList()
+                    }
+
+                    if (newMessages.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            processNewMessages(newMessages)
+                        }
+
+                        lastPollTime = newMessages.maxOf { dbMessage ->
+                            parseIso8601WithTimezone(dbMessage.created_at)
+                        }
+                    } else {
+                        lastPollTime = System.currentTimeMillis()
+                    }
+
+                    delay(3000L)
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "轮询消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                    delay(5000L)
+                }/* finally {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "轮询结束", Toast.LENGTH_SHORT).show()
+                    }
+                }*/
+            }
+        }
+    }
+
+    private fun parseIso8601WithTimezone(isoString: String): Long {
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                java.time.Instant.parse(isoString).toEpochMilli()
+            } else {
+                val pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX"
+                val formatter = SimpleDateFormat(pattern, Locale.getDefault())
+                formatter.timeZone = TimeZone.getTimeZone("UTC")
+                formatter.parse(isoString)?.time ?: 0L
+            }
+        } catch (e: Exception) {
+            try {
+                val simplifiedString = isoString.substringBefore(".") + "Z"
+                val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                simpleDateFormat.timeZone = TimeZone.getTimeZone("UTC")
+                simpleDateFormat.parse(simplifiedString)?.time ?: 0L
+            } catch (e2: Exception) {
+                0L
+            }
+        }
+    }
+
+    private fun processNewMessages(messages: List<SBClient.Message>) {
+        // Toast.makeText(context, "轮询到${messages.size}条新消息", Toast.LENGTH_SHORT).show()
+        CoroutineScope(Dispatchers.IO).launch {
+            messages.forEach { dbMessage ->
+                val senderName = getUserName(dbMessage.user_id)
+                val message = Message(
+                    id = dbMessage.id,
+                    sender = "$senderName (${dbMessage.user_id})",
+                    content = dbMessage.content
+                )
+                withContext(Dispatchers.Main) {
+                    (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
+                    chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+                }
+
+                (chatAdapter as? ChatAdapter)?.getMessages()?.let { allMessages ->
+                    saveMessagesToCache(currentRoomId ?: return@let, allMessages)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadExistingMessages(roomId: String) {
+        try {
+            val messages = withContext(Dispatchers.IO) {
+                SBClient.fetchMessages(roomId)
+            }
+
+            /**
+             * 轮询时间戳
+             */
+            if (messages.isNotEmpty()) {
+                lastPollTime = messages.maxOf { dbMessage ->
+                    parseIso8601WithTimezone(dbMessage.created_at)
+                }
+            } else {
+                lastPollTime = System.currentTimeMillis()
+            }
+
+            messages.forEach { dbMessage ->
+                val senderName = getUserName(dbMessage.user_id)
+                val message = Message(
+                    id = dbMessage.id,
+                    sender = "$senderName (${dbMessage.user_id})",
+                    content = dbMessage.content
+                )
+                if (currentRoomId == roomId) {
+                    (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "加载消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun unsubscribeFromMessages() {
+        /**
+         * 取消轮询, SupaBase RealTime未实现
+         */
+        pollingJob?.cancel()
+        pollingJob = null
+        lastPollTime = 0
+
+        /**
+         * 取消订阅
+         */
+        messageSubscription?.cancel()
+        messageSubscription = null
         currentSubscription?.cancel()
         currentSubscription = null
     }
@@ -1011,15 +1184,6 @@ class ChatRoom(
             }
         } catch (e: Exception) {
             emptyList()
-        }
-    }
-
-    fun clearCachedMessages() {
-        sharedPref.edit().apply() {
-            sharedPref.all.keys
-                .filter { it.startsWith("room_${userData.userId}") }
-                .forEach { remove(it) }
-            apply()
         }
     }
 
