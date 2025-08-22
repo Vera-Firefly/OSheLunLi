@@ -10,6 +10,7 @@ import android.view.*
 import android.view.ViewGroup.LayoutParams.*
 import android.widget.*
 import android.widget.LinearLayout.HORIZONTAL
+import android.widget.LinearLayout.LayoutParams
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -30,6 +31,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +58,7 @@ class ChatRoom(
     private var chatRoom: LinearLayout? = null
     private var exitRoom: LinearLayout? = null
     private var roomStatus: LinearLayout? = null
+    private var refreshRoom: ShapeableImageView? = null
     private var roomStatus_add: ShapeableImageView? = null
     private var roomStatus_done: ShapeableImageView? = null
 
@@ -241,6 +244,30 @@ class ChatRoom(
             gravity = Gravity.END
         }
 
+        refreshRoom = ShapeableImageView(context).apply {
+            layoutParams = LayoutParams(
+                WRAP_CONTENT,
+                WRAP_CONTENT
+            ).apply {
+                marginEnd = 4.dp
+            }
+            setPadding(8.dp, 2.dp, 8.dp, 2.dp)
+
+            setImageResource(R.drawable.refresh)
+            shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                .setAllCornerSizes(8f.dp)
+                .build()
+            setOnClickListener {
+                loadRooms { callback ->
+                    if (callback) {
+                        loadRoomsFromClient()
+                    } else {
+                        // TODO:
+                    }
+                }
+            }
+        }
+
         roomStatus_add = ShapeableImageView(context).apply {
             layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 marginEnd = 4.dp
@@ -267,9 +294,11 @@ class ChatRoom(
                 .setAllCornerSizes(8f.dp)
                 .build()
             setOnClickListener {
-                // TODO:
                 isAddNewRoom = true
                 roomStatus?.removeAllViews()
+                refreshRoom?.let {
+                    roomStatus?.addView(it, 36.dp, 36.dp)
+                }
                 roomStatus_add?.let {
                     roomStatus?.addView(it, 36.dp, 36.dp)
                 }
@@ -278,6 +307,9 @@ class ChatRoom(
 
         if (isAddNewRoom) {
             roomStatus?.removeAllViews()
+            refreshRoom?.let {
+                roomStatus?.addView(it, 36.dp, 36.dp)
+            }
             roomStatus_add?.let {
                 roomStatus?.addView(it, 36.dp, 36.dp)
             }
@@ -499,6 +531,13 @@ class ChatRoom(
         private val rooms = mutableListOf<RoomInfo>()
 
         init {
+            loadRooms { callback ->
+                if (callback) {
+                    loadRoomsFromClient()
+                } else {
+                    // TODO:
+                }
+            }
             rooms.addAll(listOf(
                 RoomInfo(
                     "1",
@@ -513,6 +552,12 @@ class ChatRoom(
         override fun addRoom(roomInfo: RoomInfo) {
             rooms.add(roomInfo)
             notifyItemInserted(rooms.size - 1)
+        }
+
+        fun addRoomIfNotExists(roomInfo: RoomInfo) {
+            if (rooms.none { it.id == roomInfo.id }) {
+                addRoom(roomInfo)
+            }
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -673,7 +718,7 @@ class ChatRoom(
             ))
 
         init {
-            loadRooms()
+            // TODO:
         }
 
         override fun addMessage(message: Message) {
@@ -797,17 +842,25 @@ class ChatRoom(
         override fun getItemCount() = messages.size
     }
 
-    private fun loadRooms() {
+    private fun loadRooms(callback: (Boolean) -> Unit = {}) {
         client = Client(context)
-        if (isLoading) return
-        isLoading = true
+        if (isLoading) {
+            Toast.makeText(context, "正在加载房间列表, 请稍后...", Toast.LENGTH_SHORT).show()
+            callback(false)
+        } else {
+            isLoading = true
+            callback(true)
+        }
+    }
+
+    private fun loadRoomsFromClient() {
         client.getDir("RoomInfo", object : Client.ResultCallback {
             override fun onSuccess(content: String) {
                 processRoomDirectory(content)
             }
 
             override fun onFailure(error: String) {
-                // TODO:
+                isLoading = false
             }
         })
     }
@@ -866,10 +919,10 @@ class ChatRoom(
                 val roomJson = result.getString(key)
                 val roomInfo = parseRoomInfo(roomJson)
 
-                addRoom(roomInfo)
+                (roomAdapter as? RoomAdapter)?.addRoomIfNotExists(roomInfo)
             }
         } catch (e: Exception) {
-            // TODO:
+            isLoading = false
         } finally {
             isLoading = false
         }
@@ -1027,7 +1080,7 @@ class ChatRoom(
 
     private fun startPollingMessages(roomId: String) {
         unsubscribeFromMessages()
-        Toast.makeText(context, "开始轮询消息", Toast.LENGTH_SHORT).show()
+        // Toast.makeText(context, "开始轮询消息", Toast.LENGTH_SHORT).show()
         pollingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && currentRoomId == roomId) {
                 try {
