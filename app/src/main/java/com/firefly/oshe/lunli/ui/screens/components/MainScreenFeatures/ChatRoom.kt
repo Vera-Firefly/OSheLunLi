@@ -555,8 +555,15 @@ class ChatRoom(
         }
 
         fun addRoomIfNotExists(roomInfo: RoomInfo) {
-            if (rooms.none { it.id == roomInfo.id }) {
+            val existingRoomIndex = rooms.indexOfFirst { it.id == roomInfo.id }
+            if (existingRoomIndex == -1) {
                 addRoom(roomInfo)
+            } else {
+                val existingRoom = rooms[existingRoomIndex]
+                if (existingRoom.roomPassword != roomInfo.roomPassword) {
+                    rooms[existingRoomIndex] = roomInfo
+                    notifyItemChanged(existingRoomIndex)
+                }
             }
         }
 
