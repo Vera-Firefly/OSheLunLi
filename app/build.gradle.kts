@@ -38,8 +38,8 @@ android {
     defaultConfig {
         applicationId = "com.firefly.oshe.lunli"
         minSdk = 28
-        versionCode = 100
-        versionName = "1.0-devel"
+        versionCode = 101
+        versionName = "1.0.1-devel"
         
         vectorDrawables { 
             useSupportLibrary = true
