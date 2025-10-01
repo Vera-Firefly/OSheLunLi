@@ -32,7 +32,7 @@ val generatedAppDir = file("$buildDir/generated/source/oshelunli/java")
 
 configure<StringFogExtension> {
     implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
-    fogPackages = arrayOf("appPackageName.info")
+    fogPackages = arrayOf("$appPackageName")
     kg = com.github.megatronking.stringfog.plugin.kg.RandomKeyGenerator()
     mode = com.github.megatronking.stringfog.plugin.StringFogMode.bytes
 }
