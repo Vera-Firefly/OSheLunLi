@@ -1,0 +1,53 @@
+name: Android CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      DEFAULT_API: ${{ secrets.DEFAULT_API }}
+      SUPABASE_API: ${{ secrets.SUPABASE_API }}
+      SUPABASE_TOKEN_1: ${{ secrets.SUPABASE_TOKEN_1 }}
+      SUPABASE_TOKEN_2: ${{ secrets.SUPABASE_TOKEN_2 }}
+      SUPABASE_TOKEN_3: ${{ secrets.SUPABASE_TOKEN_3 }}
+      TOKEN_1: ${{ secrets.TOKEN_1 }}
+      TOKEN_2: ${{ secrets.TOKEN_2 }}
+      TOKEN_3: ${{ secrets.TOKEN_3 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Release.apk
+        if: github.repository_owner == 'Vera-Firefly'
+        run: |
+          chmod +x gradlew
+          ./gradlew app:assembleRelease
+
+      - name: Build Debug.apk
+        run: |
+          chmod +x gradlew
+          ./gradlew app:assembleDebug
+
+      - name: Upload Release
+        if: github.repository_owner == 'Vera-Firefly'
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-Release
+          path: app/build/outputs/apk/release/*
+
+      - name: Upload Debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-Debug
+          path: app/build/outputs/apk/debug/*
