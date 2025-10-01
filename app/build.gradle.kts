@@ -1,4 +1,5 @@
 import com.github.megatronking.stringfog.plugin.StringFogExtension
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -7,24 +8,45 @@ plugins {
     id("stringfog")
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
 }
+apply(plugin = "stringfog")
+
+val appPackageName = "com.firefly.oshe.lunli"
+
+var localProperty: Properties? = null
+if (file("${rootDir}/local.properties").exists()) {
+    localProperty = Properties()
+    file("${rootDir}/local.properties").inputStream().use { localProperty?.load(it) }
+}
+val pwd = System.getenv("KEYSTORE_PASSWORD") ?: localProperty?.getProperty("pwd")
+
+val defaultApi = System.getenv("DEFAULT_API") ?: localProperty?.getProperty("defaultApi")
+val supabaseApi = System.getenv("SUPABASE_API") ?: localProperty?.getProperty("supabaseApi")
+val supabaseToken1 = System.getenv("SUPABASE_TOKEN_1") ?: localProperty?.getProperty("supabaseToken1")
+val supabaseToken2 = System.getenv("SUPABASE_TOKEN_2") ?: localProperty?.getProperty("supabaseToken2")
+val supabaseToken3 = System.getenv("SUPABASE_TOKEN_3") ?: localProperty?.getProperty("supabaseToken3")
+val token1 = System.getenv("TOKEN_1") ?: localProperty?.getProperty("token1")
+val token2 = System.getenv("TOKEN_2") ?: localProperty?.getProperty("token2")
+val token3 = System.getenv("TOKEN_3") ?: localProperty?.getProperty("token3")
+
+val generatedAppDir = file("$buildDir/generated/source/oshelunli/java")
 
 configure<StringFogExtension> {
     implementation = "com.github.megatronking.stringfog.xor.StringFogImpl"
-    fogPackages = arrayOf("com.firefly.oshe.lunli")
+    fogPackages = arrayOf("appPackageName.info")
     kg = com.github.megatronking.stringfog.plugin.kg.RandomKeyGenerator()
     mode = com.github.megatronking.stringfog.plugin.StringFogMode.bytes
 }
 
 android {
-    namespace = "com.firefly.oshe.lunli"
+    namespace = appPackageName
     compileSdk = 34
 
     signingConfigs {
         create("releaseBuild") {
             storeFile = file("release.key")
-            storePassword = "Firefly"
+            storePassword = pwd
             keyAlias = "Firefly"
-            keyPassword = "Firefly"
+            keyPassword = pwd
         }
 
         create("debugBuild") {
@@ -36,10 +58,10 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.firefly.oshe.lunli"
+        applicationId = appPackageName
         minSdk = 28
-        versionCode = 100
-        versionName = "1.0-devel"
+        versionCode = 101
+        versionName = "1.0.1-devel"
         
         vectorDrawables { 
             useSupportLibrary = true
@@ -49,18 +71,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    flavorDimensions += "environment"
-    productFlavors {
-        create("dev") {
-            dimension = "environment"
-            targetSdk = 28
-        }
-        create("prod") {
-            dimension = "environment"
-            targetSdk = 34
-        }
     }
 
     buildTypes {
@@ -77,6 +87,8 @@ android {
         }
     }
 
+    sourceSets["main"].java.srcDirs(generatedAppDir)
+
     buildFeatures {
         viewBinding = true
     }
@@ -85,6 +97,52 @@ android {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions.jvmTarget = "11"
+}
+
+fun generateJavaClass(
+    sourceOutputDir: File,
+    packageName: String,
+    className: String,
+    constantList: List<String>
+) {
+    val outputDir = File(sourceOutputDir, packageName.replace(".", "/"))
+    outputDir.mkdirs()
+    val javaFile = File(outputDir, "$className.java")
+    javaFile.writeText(
+        """
+        |/**
+        | * Automatically generated file. DO NOT MODIFY
+        | */
+        |package $packageName;
+        |
+        |public class $className {
+        |${constantList.joinToString("\n") { "\t$it" }}
+        |}
+        """.trimMargin()
+    )
+    println("Generated Java file: ${javaFile.absolutePath}")
+}
+
+tasks.register("generateInfoDistributor") {
+    doLast {
+        fun String.toStatement(type: String = "String", variable: String) = "public static final $type $variable = $this;"
+
+        val constantList = listOf(
+            "\"$defaultApi\"".toStatement(variable = "DEFAULT_API"),
+            "\"$supabaseApi\"".toStatement(variable = "SUPABASE_API"),
+            "\"$supabaseToken1\"".toStatement(variable = "SUPABASE_TOKEN_1"),
+            "\"$supabaseToken2\"".toStatement(variable = "SUPABASE_TOKEN_2"),
+            "\"$supabaseToken3\"".toStatement(variable = "SUPABASE_TOKEN_3"),
+            "\"$token1\"".toStatement(variable = "TOKEN_1"),
+            "\"$token2\"".toStatement(variable = "TOKEN_2"),
+            "\"$token3\"".toStatement(variable = "TOKEN_3")
+        )
+        generateJavaClass(generatedAppDir, "$appPackageName.info", "InfoDistributor", constantList)
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("generateInfoDistributor")
 }
 
 dependencies {
@@ -109,6 +167,8 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.4.2")
     implementation("io.github.jan-tennert.supabase:storage-kt:2.4.2")
     implementation("io.ktor:ktor-client-android:2.3.0")
+    implementation("io.ktor:ktor-client-cio:2.3.12")
+    implementation("io.ktor:ktor-client-websockets:2.3.12")
     // 看到下面的疯狂排除模型了吗? 请移步app/src/main/assets/markwon.txt
     implementation("io.noties.markwon:core:4.6.2") {
         exclude(group = "com.atlassian.commonmark", module = "commonmark")

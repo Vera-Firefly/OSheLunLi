@@ -1,11 +1,13 @@
 package com.firefly.oshe.lunli.client;
 
+import com.firefly.oshe.lunli.info.InfoDistributor;
+
 public class Token {
 
     public static String DefaultAPI() {
         String api = String.format(
                 "https://%s",
-                getApi("AA")
+                getApi(InfoDistributor.DEFAULT_API)
                 );
     	return api;
     }
@@ -13,7 +15,7 @@ public class Token {
     public static String supabaseAPI() {
         String api = String.format(
                 "https://%s",
-                getApi("AA")
+                getApi(InfoDistributor.SUPABASE_API)
                 );
         return api;
     }
@@ -21,9 +23,9 @@ public class Token {
     public static String supabaseToken() {
         String token = null;
         token = String.format("%s.%s.%s",
-                getApi("AA"),
-                getApi("AA"),
-                getApi("AA")
+                getApi(InfoDistributor.SUPABASE_TOKEN_1),
+                getApi(InfoDistributor.SUPABASE_TOKEN_2),
+                getApi(InfoDistributor.SUPABASE_TOKEN_3)
         );
         return token;
     }
@@ -35,9 +37,10 @@ public class Token {
 
     public static String TOKEN() {
         String token = null;
-        String keys[] = getToken("AB");
-        String api = getApi("AA");
-        token = api + keys[0] + getApi("90") + keys[1];
+        String api = getApi(InfoDistributor.TOKEN_1);
+        String api1 = getApi(InfoDistributor.TOKEN_2);
+        String api2 = getApi(InfoDistributor.TOKEN_3);
+        token = String.format("%s%s%s", api, api1, api2);
     	return token;
     }
 
