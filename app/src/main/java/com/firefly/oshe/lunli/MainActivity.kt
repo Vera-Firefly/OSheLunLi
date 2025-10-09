@@ -30,7 +30,6 @@ import com.firefly.oshe.lunli.data.UserMessageMData
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
-import com.firefly.oshe.lunli.ui.screens.MessageScreen
 import com.firefly.oshe.lunli.ui.screens.RegistScreen
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -307,51 +306,12 @@ public class MainActivity : Activity() {
             .setCancelable(false)
             .create()
         progressDialog.show()
-        client.getData("UserMessage", userId,
-            object : Client.ResultCallback {
-                override fun onSuccess(content: String) {
-                    runOnUiThread {
-                        progressDialog.dismiss()
-                        isGetMessage(content, userId)
-                    }
-                }
-
-                override fun onFailure(error: String) {
-                    runOnUiThread {
-                        progressDialog.dismiss()
-                        showMessageScreen(userId, 3)
-                        var Err: String = error
-                        if (error == "UserFile") Err = "该账户未创建信息"
-                        Toast.makeText(this@MainActivity, Err, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            })
     }
 
     // 获取信息: 处理数据并写入本地
     private fun isGetMessage(IUserMessage: String, IUserId: String) {
         try {
-            val rootObject = JSONObject(IUserMessage)
-            rootObject.keys().forEach { userId: String ->
-                rootObject.getJSONObject(userId)?.let { user ->
-                    userMessageMData.deleteMessage(IUserId)
-                    val data = UserMessage(
-                        userId = user.optString("userId"),
-                        userName = user.optString("userName"),
-                        biliName = user.optString("biliName"),
-                        biliHomePage = user.optString("biliHomePage"),
-                        biliUID = user.optString("biliUID"),
-                        ksName = user.optString("ksName"),
-                        ksHomePage = user.optString("ksHomePage"),
-                        ksUID = user.optString("ksUID"),
-                        tiktokName = user.optString("tiktokName"),
-                        tiktokHomePage = user.optString("tiktokHomePage"),
-                        tiktokUID = user.optString("tiktokUID")
-                    )
-                    userMessageMData.saveMessage(data)
-                    showMessageScreen(IUserId, 3)
-                }
-            }
+            // TODO:
         } catch (e: JSONException) {
             e.printStackTrace()
         }
@@ -359,13 +319,9 @@ public class MainActivity : Activity() {
 
     // 信息界面
     fun showMessageScreen(id: String, anim: Int) {
-        val screen = MessageScreen(
-            context = this,
-            userData = currentUser,
-            currentId = id,
-            returnMainScreen = { showMainScreen(4) }
-        )
-        switchScreen(screen, anim)
+        // TODO:
+        // val screen = MessageScreen()
+        // switchScreen(screen, anim)
     }
 
     // 更新用户配置文件
