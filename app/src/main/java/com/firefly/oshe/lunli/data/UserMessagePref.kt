@@ -5,7 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import android.content.SharedPreferences
 
-class UserMessageMData(private val context: Context) {
+class UserMessagePref(private val context: Context) {
     private val prefs: SharedPreferences by lazy {
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     }

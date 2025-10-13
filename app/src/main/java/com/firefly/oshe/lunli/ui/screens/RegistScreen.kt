@@ -18,7 +18,7 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserMData
+import com.firefly.oshe.lunli.data.UserPref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
@@ -26,7 +26,7 @@ import com.firefly.oshe.lunli.client.SupaBase.SBClient
 
 class RegistScreen(
     context: Context,
-    private val userMData: UserMData,
+    private val userPref: UserPref,
     private val onRegisterSuccess: (String, String, String) -> Unit,
     private val onCancelRegister: () -> Unit
 ) : LinearLayout(context) {
