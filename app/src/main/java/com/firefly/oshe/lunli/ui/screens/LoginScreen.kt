@@ -25,7 +25,6 @@ import com.google.android.material.textfield.TextInputLayout
 
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserPref
-import com.firefly.oshe.lunli.data.UserMessagePref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
@@ -38,7 +37,7 @@ class LoginScreen(
     private val userData: UserData,
     private val userList: MutableList<String>,
     private val userPref: UserPref,
-    private val userMessagePref: UserMessagePref,
+    // private val userMessagePref: UserMessagePref,
     private val onLoginSuccess: (String) -> Unit,
     private val onRegisterClick: () -> Unit
 ) : LinearLayout(context) {
@@ -128,7 +127,7 @@ class LoginScreen(
                                 .setMessage("确定删除本地账户 $userId 吗？")
                                 .setPositiveButton("删除") { _, _ ->
                                     userPref.deleteUser(userId)
-                                    userMessagePref.deleteMessage(userId)
+                                    // userMessagePref.deleteMessage(userId)
                                     userList.remove(userId)
                                     notifyDataSetChanged()
 
@@ -266,7 +265,7 @@ class LoginScreen(
             rootObject.getJSONObject(userId)?.let { user ->
                     if (inputPassword == user.optString("password")) {
                         userPref.deleteUser(inputUserId)
-                        userMessagePref.deleteMessage(inputUserId)
+                        // userMessagePref.deleteMessage(inputUserId)
                         val data = UserData(
                             userId = user.optString("userId"),
                             userName = user.optString("userName"),

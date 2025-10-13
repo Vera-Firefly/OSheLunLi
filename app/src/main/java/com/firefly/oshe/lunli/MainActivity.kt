@@ -25,7 +25,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserPref
-import com.firefly.oshe.lunli.data.UserMessagePref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
@@ -40,7 +39,7 @@ public class MainActivity : Activity() {
 
     private lateinit var client: Client
     private lateinit var userPref: UserPref
-    private lateinit var userMessagePref: UserMessagePref
+    // private lateinit var userMessagePref: UserMessagePref
     private var currentUser = UserData()
 
     private val REQUEST_CODE = 12
@@ -60,7 +59,7 @@ public class MainActivity : Activity() {
         setContentView(container)
         client = Client(this)
         userPref = UserPref(this)
-        userMessagePref = UserMessagePref(this)
+        // userMessagePref = UserMessagePref(this)
 
         val lastUserId = UserPref.getLastUser(this)
 
@@ -231,7 +230,7 @@ public class MainActivity : Activity() {
             userData = currentUser,
             userList = userList,
             userPref = userPref,
-            userMessagePref = userMessagePref,
+            // userMessagePref = userMessagePref,
             onLoginSuccess = { id ->
                 UserPref.setLastUser(this, id)
                 userPref.getUser(id)?.let { user ->
