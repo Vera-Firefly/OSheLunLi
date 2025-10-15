@@ -1,5 +1,5 @@
 package com.firefly.oshe.lunli.data
 
-data class UserMessage(
+data class UserInformation(
     val userId: String = ""
 )

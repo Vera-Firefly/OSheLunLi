@@ -1,5 +1,5 @@
 package com.firefly.oshe.lunli.data
 
-class UserMessagePref {
+class UserInformationPref {
     // TODO: 用户信息
 }

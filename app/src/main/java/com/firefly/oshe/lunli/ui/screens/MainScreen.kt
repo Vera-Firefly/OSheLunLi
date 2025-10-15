@@ -11,7 +11,10 @@ import com.google.android.material.textview.MaterialTextView
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
+import com.firefly.oshe.lunli.data.UserImage
+import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.ChatRoom
+import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
 
 class MainScreen(
     context: Context,
@@ -24,6 +27,7 @@ class MainScreen(
     private lateinit var mainView: LinearLayout
 
     private lateinit var chatRoomContent: ChatRoom
+    private lateinit var homePageContent: HomePage
     private var selectedTabIndex = 0
 
     private var onUserAvatar: Boolean = true
@@ -43,10 +47,10 @@ class MainScreen(
     private var backToMain: LinearLayout? = null
     private var chatRoom: LinearLayout? = null
     private var cePage: LinearLayout? = null
-    private var userPage: LinearLayout? = null
+    private var homePage: LinearLayout? = null
     private var endBarContainer: LinearLayout? = null
 
-    private var roomStatus: LinearLayout? = null
+    private var CRStatus: LinearLayout? = null
 
     init {
         orientation = VERTICAL
@@ -55,7 +59,8 @@ class MainScreen(
     }
 
     private fun setupViews() {
-        getChatRoom()
+        setupChatRoom()
+        setupHomePage()
         removeAllViews()
         addView(createTopBar())
         addView(createMainView())
@@ -63,7 +68,7 @@ class MainScreen(
         updateEndBarItems()
     }
 
-    private fun getChatRoom() {
+    private fun setupChatRoom() {
         chatRoomContent = ChatRoom(context, userData).apply {
             setOnRoomSelectedListener {
                 post {
@@ -78,14 +83,26 @@ class MainScreen(
                 post {
                     topBar.removeAllViews()
                     userAvatar?.let { topBar.addView(it) }
-                    roomStatus?.let { topBar.addView(it) }
+                    CRStatus?.let { topBar.addView(it) }
                     endBar?.removeAllViews()
                     endBar?.layoutParams?.height = 40.dp
                     endBarContainer?.let { endBar?.addView(it) }
                 }
             }
         }
-        roomStatus = chatRoomContent.setRoomStatus()
+        CRStatus = chatRoomContent.setRoomStatus()
+    }
+
+    private fun setupHomePage() {
+        homePageContent = HomePage(
+            context,
+            userData.userId,
+            userData,
+            UserInformation("1"),
+            UserImage("1", "DUMMY")
+        ).apply {
+            // TODO:
+        }
     }
 
     private fun createTopBar(): LinearLayout {
@@ -96,7 +113,7 @@ class MainScreen(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(8.dp, 0, 8.dp, 0)
             addUserAvatar()
-            addView(roomStatus)
+            addView(CRStatus)
             addBackToMain()
         }
         return topBar
@@ -201,7 +218,7 @@ class MainScreen(
             setPadding(8.dp, 0, 8.dp, 0)
             onChatRoom()
             // onCommunity()
-            // onUserPage()
+            onHomePage()
         }
         return mainView
     }
@@ -223,11 +240,14 @@ class MainScreen(
         if (selectedTabIndex == 1) addView(cePage)
     }
 
-    private fun LinearLayout.onUserPage() {
-        userPage = LinearLayout(context).apply {
-            // TODO: 
+    private fun LinearLayout.onHomePage() {
+        homePage = LinearLayout(context).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            orientation = VERTICAL
+
+            addView(homePageContent.createView())
         }
-        if (selectedTabIndex == 2) addView(userPage)
+        if (selectedTabIndex == 2) addView(homePage)
     }
 
 
@@ -365,8 +385,8 @@ class MainScreen(
             if (userAvatar?.parent == null)
                 topBar.addView(userAvatar)
 
-            if (roomStatus?.parent == null)
-                topBar.addView(roomStatus)
+            if (CRStatus?.parent == null)
+                topBar.addView(CRStatus)
 
             if (backToMain?.parent != null)
                 topBar.removeView(backToMain)
@@ -378,8 +398,8 @@ class MainScreen(
             if (userAvatar?.parent != null)
                 topBar.removeView(userAvatar)
 
-            if (roomStatus?.parent != null)
-                topBar.removeView(roomStatus)
+            if (CRStatus?.parent != null)
+                topBar.removeView(CRStatus)
 
             if (backToMain?.parent == null)
                 topBar.addView(backToMain)
@@ -388,15 +408,14 @@ class MainScreen(
             backToMain?.visibility = View.VISIBLE
         }
         // 未实现, 暂时不启用
-        /*
+
         when (selectedTabIndex) {
             // 聊天室
             0 -> {
-                userPage?.let { if (it.parent != null) mainView.removeView(it) }
+                homePage?.let { if (it.parent != null) mainView.removeView(it) }
                 cePage?.let { if (it.parent != null) mainView.removeView(it) }
                 
                 if (chatRoom?.parent == null) {
-                    onChatRoom()
                     chatRoom?.let { mainView.addView(it) }
                 }
                 chatRoom?.visibility = View.VISIBLE
@@ -404,7 +423,7 @@ class MainScreen(
 
             // 社区
             1 -> {
-                userPage?.let { if (it.parent != null) mainView.removeView(it) }
+                homePage?.let { if (it.parent != null) mainView.removeView(it) }
                 chatRoom?.let { if (it.parent != null) mainView.removeView(it) }
             
                 // 添加或显示设置页
@@ -419,15 +438,14 @@ class MainScreen(
             2 -> {
                 chatRoom?.let { if (it.parent != null) mainView.removeView(it) }
                 cePage?.let { if (it.parent != null) mainView.removeView(it) }
-            
+
                 // 添加或显示用户页面
-                if (userPage?.parent == null) {
-                    onUserPage()
-                    userPage?.let { mainView.addView(it) }
+                if (homePage?.parent == null) {
+                    homePage?.let { mainView.addView(it) }
                 }
-                userPage?.visibility = View.VISIBLE
+                homePage?.visibility = View.VISIBLE
             }
         }
-        */
+
     }
 }
