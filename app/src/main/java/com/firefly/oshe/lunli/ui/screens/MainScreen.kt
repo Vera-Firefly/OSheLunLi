@@ -101,7 +101,11 @@ class MainScreen(
             UserInformation("1"),
             UserImage("1", "DUMMY")
         ).apply {
-            // TODO:
+            setOnSignOutListener {
+                post {
+                    onLogout()
+                }
+            }
         }
     }
 
@@ -134,11 +138,17 @@ class MainScreen(
 
     private fun LinearLayout.addUserImage() {
         ShapeableImageView(context).apply {
-            setImageResource(android.R.drawable.ic_menu_gallery)
+            setImageResource(R.drawable.user)
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCornerSizes(8f.dp)
                 .build()
-            setOnClickListener { showUserMenu(it) }
+            setOnClickListener {
+                selectedTabIndex = 2
+                onUserAvatar = false
+                onBackToMain = true
+                updateEndBarItems()
+                updateBarState()
+            }
             layoutParams = LayoutParams(
                 WRAP_CONTENT, 
                 WRAP_CONTENT
@@ -260,7 +270,8 @@ class MainScreen(
             setPadding(8.dp, 0, 8.dp, 0)
             createEndBarContainer()
         }
-        // if (selectedTabIndex == 0) 
+        // 隐藏底部栏
+        // if (selectedTabIndex == 0)
         addView(endBar)
     }
     
@@ -362,21 +373,6 @@ class MainScreen(
             
             icon?.setColorFilter(if (isSelected) selectedColor else normalColor)
             text?.setTextColor(if (isSelected) selectedColor else normalColor)
-        }
-    }
-
-    private fun showUserMenu(anchor: View) {
-        PopupMenu(context, anchor).apply {
-            menu.add("账户信息").setOnMenuItemClickListener {
-                Toast.makeText(context, "该功能暂不可用", Toast.LENGTH_LONG).show()
-                // onMessage()
-                true
-            }
-            menu.add("退出登录").setOnMenuItemClickListener {
-                onLogout()
-                true
-            }
-            show()
         }
     }
 

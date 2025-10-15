@@ -724,10 +724,6 @@ class ChatRoom(
                     """.trimIndent()
             ))
 
-        init {
-            // TODO:
-        }
-
         override fun addMessage(message: Message) {
             messages.add(message)
             notifyItemInserted(messages.size - 1)
