@@ -227,7 +227,7 @@ class MainScreen(
             gravity = Gravity.CENTER
             setPadding(8.dp, 0, 8.dp, 0)
             onChatRoom()
-            // onCommunity()
+            onCommunity()
             onHomePage()
         }
         return mainView
@@ -403,7 +403,6 @@ class MainScreen(
             userAvatar?.visibility = View.GONE
             backToMain?.visibility = View.VISIBLE
         }
-        // 未实现, 暂时不启用
 
         when (selectedTabIndex) {
             // 聊天室
@@ -424,7 +423,6 @@ class MainScreen(
             
                 // 添加或显示设置页
                 if (cePage?.parent == null) {
-                    onCommunity()
                     cePage?.let { mainView.addView(it) }
                 }
                 cePage?.visibility = View.VISIBLE
