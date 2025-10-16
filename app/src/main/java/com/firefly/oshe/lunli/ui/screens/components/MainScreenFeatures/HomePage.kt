@@ -1,12 +1,21 @@
 package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.net.Uri
+import android.view.Gravity
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.*
 import android.widget.LinearLayout
 import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
+import android.widget.LinearLayout.VERTICAL
+import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,6 +27,7 @@ import com.firefly.oshe.lunli.data.UserImage
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.dp
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.imageview.ShapeableImageView
 
 // 用户个人主页
 class HomePage(
@@ -25,7 +35,6 @@ class HomePage(
     private val currentId: String,
     private val userData: UserData,
     private val userInformation: UserInformation,
-    private val userImage: UserImage
 ) {
 
     private lateinit var mainView: LinearLayout
@@ -35,6 +44,10 @@ class HomePage(
     private final var pageAdapter: BaseUserHomeAdapter? = null
 
     private var homePage: LinearLayout? = null
+
+    private var onItemClickCount = 0
+    private var lastResetTime = System.currentTimeMillis()
+    private var previousToast: Toast? = null
 
     fun interface onSignOutListener {
         fun onSignOut()
@@ -102,6 +115,15 @@ class HomePage(
                 setPadding(0, 8.dp, 0, 8.dp)
             }
 
+            createCMLView(
+                R.drawable.user,
+                userData.userName,
+                "NONE",
+                userData.userId
+            ).also {
+                root.addView(it)
+            }
+
             val buttonLayout = LinearLayout(context).apply {
                 orientation = HORIZONTAL
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
@@ -109,10 +131,11 @@ class HomePage(
                 }
             }
 
-            val exitButton = createButton("退出登录") {
+            createButton("退出登录") {
                 signOutListener?.onSignOut()
             }.apply {
                 layoutParams = LayoutParams(0, 48.dp, 1f).apply {
+                    marginStart = 4.dp
                     marginEnd = 4.dp
                 }
             }.also { buttonLayout.addView(it) }
@@ -123,10 +146,142 @@ class HomePage(
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            val rootView = holder.itemView
+            // val rootView = holder.itemView
         }
 
         override fun getItemCount() = information.size
+    }
+
+    private fun createCMLView(
+        iconResId: Int,
+        name: String,
+        userMessage: String,
+        uid: String
+    ): LinearLayout {
+        return LinearLayout(context).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setMargins(8.dp, 8.dp, 8.dp, 8.dp)
+            }
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+
+            val rippleColor = ColorStateList.valueOf(Color.parseColor("#20000000"))
+            background = RippleDrawable(
+                rippleColor,
+                createRoundedBackground().apply {
+                    setColor(ContextCompat.getColor(context, R.color.tan))
+                    cornerRadius = 16f
+                },
+                null
+            )
+            isClickable = true
+            isFocusable = true
+
+            ShapeableImageView(context).apply {
+                layoutParams = LayoutParams(52.dp, 52.dp).apply {
+                    marginEnd = 18.dp
+                }
+                setImageResource(iconResId)
+                addView(this)
+            }
+
+            LinearLayout(context).apply {
+                orientation = VERTICAL
+                TextView(context).apply {
+                    text = "$name"
+                    textSize = 24f
+                    setTextColor(ContextCompat .getColor(context, R.color.primary_text_color))
+                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        topMargin = 2.dp
+                    }
+                    addView(this)
+                }
+                TextView(context).apply {
+                    text = "$userMessage"
+                    textSize = 12f
+                    setTextColor(ContextCompat.getColor(context, R.color.primary_text_color))
+                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        topMargin = 2.dp
+                    }
+                    addView(this)
+                }
+                TextView(context).apply {
+                    text = "UID：$uid"
+                    textSize = 12f
+                    setTextColor(ContextCompat.getColor(context, R.color.primary_text_color))
+                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        topMargin = 2.dp
+                    }
+                    addView(this)
+                }
+            }.also { subLayout ->
+                addView(subLayout)
+            }
+
+            setOnClickListener {
+                previousToast?.cancel()
+
+                val currentTime = System.currentTimeMillis()
+                val timeZZ = currentTime - lastResetTime
+                if (timeZZ > 5000) {
+                    onItemClickCount = 0
+                    lastResetTime = currentTime
+                }
+
+                onItemClickCount++
+
+                val displayText = if (onItemClickCount > 6) {
+                    lastResetTime = currentTime
+                    "Ciallo～(∠・ω< )⌒☆ x ${onItemClickCount}"
+                } else if (onItemClickCount > 5) {
+                    lastResetTime = currentTime
+                    "那你点吧"
+                } else if (onItemClickCount > 4) {
+                    "您的点击太频繁了（=´口｀=）"
+                } else {
+                    val emojiArray = arrayOf(
+                        "(￣▽￣)", "(～￣▽￣)～", "(´∀｀)", "(°∀°)ﾉ",
+                        "（￣︶￣）", "(❤ω❤)", "(≧∇≦)ﾉ", "(´▽｀)",
+                        "(づ￣ 3￣)づ", "(*/ω＼*)", "～(∠・ω< )⌒☆"
+                    )
+                    emojiArray.random()
+                }
+
+                previousToast = Toast.makeText(context, displayText, Toast.LENGTH_SHORT)
+                previousToast?.show()
+                // TODO:
+                /*
+                if (userMessage.isNotBlank() && userMessage != "未填写") {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(userMessage))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "链接格式错误或浏览器未安装",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        "未设置主页链接",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+               */
+            }
+
+        }
+    }
+
+    private fun createRoundedBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 16f
+            setStroke(2.dp, Color.parseColor("#30000000"))
+        }
     }
 
     private fun createButton(text: String, onClick: () -> Unit): MaterialButton {

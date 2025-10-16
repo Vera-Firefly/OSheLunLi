@@ -14,6 +14,7 @@ import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserImage
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.ChatRoom
+import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.Community
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
 
 class MainScreen(
@@ -27,6 +28,7 @@ class MainScreen(
     private lateinit var mainView: LinearLayout
 
     private lateinit var chatRoomContent: ChatRoom
+    private lateinit var cePageContent: Community
     private lateinit var homePageContent: HomePage
     private var selectedTabIndex = 0
 
@@ -60,6 +62,7 @@ class MainScreen(
 
     private fun setupViews() {
         setupChatRoom()
+        setupCEPage()
         setupHomePage()
         removeAllViews()
         addView(createTopBar())
@@ -93,13 +96,21 @@ class MainScreen(
         CRStatus = chatRoomContent.setRoomStatus()
     }
 
+    private fun setupCEPage() {
+        cePageContent = Community(
+            context,
+            userData.userId,
+            userData,
+            UserInformation(userData.userId, userData.userName)
+        )
+    }
+
     private fun setupHomePage() {
         homePageContent = HomePage(
             context,
             userData.userId,
             userData,
-            UserInformation("1"),
-            UserImage("1", "DUMMY")
+            UserInformation(userData.userId, userData.userName)
         ).apply {
             setOnSignOutListener {
                 post {
@@ -245,7 +256,10 @@ class MainScreen(
 
     private fun LinearLayout.onCommunity() {
         cePage = LinearLayout(context).apply {
-            // TODO: 
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            orientation = VERTICAL
+
+            addView(cePageContent.createView())
         }
         if (selectedTabIndex == 1) addView(cePage)
     }
