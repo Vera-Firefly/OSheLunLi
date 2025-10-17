@@ -30,6 +30,11 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
+import com.firefly.oshe.lunli.client.SupaBase.SBClient
 
 // 用户个人主页
 class HomePage(
@@ -201,7 +206,24 @@ class HomePage(
                         topMargin = 2.dp
                     }
                     setOnClickListener {
-                        EditMessageDialog("编辑用户名", "用户名", userData.userName)
+                        EditMessageDialog(
+                            "编辑用户名",
+                            "用户名",
+                            userData.userName
+                        ) {
+                            if (it != userData.userName) {
+                                SBClient.updateUser(userData.userId, it) {
+                                    if (!it) {
+                                        previousToast?.cancel()
+                                        previousToast = Toast.makeText(
+                                            context, "用户名修改失败",
+                                            Toast.LENGTH_SHORT
+                                        )
+                                        previousToast?.show()
+                                    }
+                                }
+                            }
+                        }
                     }
                     addView(this)
                 }
@@ -223,7 +245,7 @@ class HomePage(
                     addView(this)
                 }
                 TextView(context).apply {
-                    text = "$userMessage"
+                    text = userMessage
                     textSize = 12f
                     setTextColor(ContextCompat.getColor(context, R.color.primary_text_color))
                     layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
@@ -272,15 +294,19 @@ class HomePage(
         }
     }
 
-    private fun EditMessageDialog(title: String, dialogHint: String, message: String) {
-        var view: LinearLayout
-        view = LinearLayout(context).apply {
+    private fun EditMessageDialog(
+        title: String,
+        dialogHint: String,
+        message: String,
+        callBack: (String) -> Unit = {}
+    ) {
+        val view: LinearLayout = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(16.dp, 16.dp, 16.dp, 16.dp)
         }
 
-        TextInputEditText(context).apply {
-            hint = "$dialogHint"
+        val input = TextInputEditText(context).apply {
+            hint = dialogHint
             setTextColor(Color.BLACK)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -305,8 +331,12 @@ class HomePage(
         MaterialAlertDialogBuilder(context)
             .setTitle(title)
             .setView(view)
-            .setPositiveButton("确定", null)
-            .setNegativeButton("取消", null)
+            .setPositiveButton("确定") { _, _ ->
+                callBack(input.text.toString())
+            }
+            .setNegativeButton("取消") { _, _ ->
+                callBack(message)
+            }
             .show()
     }
 
@@ -314,7 +344,7 @@ class HomePage(
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 16f
-            setStroke(2.dp, Color.parseColor("#30000000"))
+            setStroke(2.dp, "#30000000".toColorInt())
         }
     }
 

@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import okhttp3.Dispatcher
 
 object SBClient {
     val client: SupabaseClient = createSupabaseClient(
@@ -54,6 +56,31 @@ object SBClient {
                     .decodeSingleOrNull<User>()
             } catch (e: Exception) {
                 null
+            }
+        }
+    }
+
+    fun updateUser(userId: String, userName: String, callback: (Boolean) -> Unit = {}) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.postgrest["users"]
+                    .update({
+                        set("name", userName)
+                    }
+                    ) {
+                        filter {
+                            eq("id",userId)
+                        }
+                    }
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback(true)
+                }
+                println("User Name Update: $userName")
+            } catch (e: Exception) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback(false)
+                }
+                e.printStackTrace()
             }
         }
     }
@@ -136,14 +163,21 @@ object SBClient {
     }.flowOn(Dispatchers.IO)
 
 
+    @Serializable
     data class User(val id: String, val name: String)
+
+    @Serializable
     data class RoomId(val id: String)
+
+    @Serializable
     data class NewMessage(
         val id: String,
         val room_id: String,
         val user_id: String,
         val content: String
     )
+
+    @Serializable
     data class Message(
         val id: String,
         val room_id: String,

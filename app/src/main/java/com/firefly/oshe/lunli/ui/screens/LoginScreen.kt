@@ -24,7 +24,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserPref
+import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
@@ -36,7 +36,7 @@ class LoginScreen(
     context: Context,
     private val userData: UserData,
     private val userList: MutableList<String>,
-    private val userPref: UserPref,
+    private val userDataPref: UserDataPref,
     // private val userMessagePref: UserMessagePref,
     private val onLoginSuccess: (String) -> Unit,
     private val onRegisterClick: () -> Unit
@@ -126,7 +126,7 @@ class LoginScreen(
                                 .setTitle("删除账户")
                                 .setMessage("确定删除本地账户 $userId 吗？")
                                 .setPositiveButton("删除") { _, _ ->
-                                    userPref.deleteUser(userId)
+                                    userDataPref.deleteUser(userId)
                                     // userMessagePref.deleteMessage(userId)
                                     userList.remove(userId)
                                     notifyDataSetChanged()
@@ -157,7 +157,7 @@ class LoginScreen(
                 override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                     val selectedUserId = userList[position]
                     tilUserId.editText!!.setText(selectedUserId)
-                    userPref.getUser(selectedUserId)?.let { user ->
+                    userDataPref.getUser(selectedUserId)?.let { user ->
                         if (user.hasPasswordError) {
                             tilPassword.editText!!.setText("")
                             tilPassword.error = "该账户需要重新输入密码"
@@ -185,7 +185,7 @@ class LoginScreen(
             tilUserId.error = null
             tilPassword.error = null
 
-            userPref.getUser(inputUserId)?.let { user ->
+            userDataPref.getUser(inputUserId)?.let { user ->
                 if (user.hasPasswordError && inputPassword.isEmpty()) {
                     tilPassword.error = "请重新输入密码"
                     return@createButton
@@ -264,15 +264,15 @@ class LoginScreen(
             rootObject.keys().forEach { userId: String ->
             rootObject.getJSONObject(userId)?.let { user ->
                     if (inputPassword == user.optString("password")) {
-                        userPref.deleteUser(inputUserId)
+                        userDataPref.deleteUser(inputUserId)
                         // userMessagePref.deleteMessage(inputUserId)
                         val data = UserData(
                             userId = user.optString("userId"),
                             userName = user.optString("userName"),
                             password = user.optString("password")
                         )
-                        userPref.saveUser(data)
-                        UserPref.setLastUser(context, inputUserId)
+                        userDataPref.saveUser(data)
+                        UserDataPref.setLastUser(context, inputUserId)
                         onLoginSuccess(inputUserId)
                     } else {
                         tilPassword.error = "验证失败，请检查输入"

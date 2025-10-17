@@ -24,7 +24,7 @@ import android.widget.ProgressBar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserPref
+import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
@@ -33,12 +33,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 import org.json.JSONException
 
-public class MainActivity : Activity() {
+class MainActivity : Activity() {
     private val container by lazy { FrameLayout(this) }
     private var currentScreen: View? = null
 
     private lateinit var client: Client
-    private lateinit var userPref: UserPref
+    private lateinit var userDataPref: UserDataPref
     // private lateinit var userMessagePref: UserMessagePref
     private var currentUser = UserData()
 
@@ -58,13 +58,13 @@ public class MainActivity : Activity() {
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
         client = Client(this)
-        userPref = UserPref(this)
+        userDataPref = UserDataPref(this)
         // userMessagePref = UserMessagePref(this)
 
-        val lastUserId = UserPref.getLastUser(this)
+        val lastUserId = UserDataPref.getLastUser(this)
 
         lastUserId?.let { userId ->
-            userPref.getUser(userId)?.let { user ->
+            userDataPref.getUser(userId)?.let { user ->
                 currentUser.apply {
                     this.userId = user.userId
                     userName = user.userName
@@ -224,20 +224,20 @@ public class MainActivity : Activity() {
 
     // 登陆界面事件处理
     fun showLoginScreen(anim: Int) {
-        val userList = userPref.getAllUsers().keys.toMutableList()
+        val userList = userDataPref.getAllUsers().keys.toMutableList()
         val screen = LoginScreen(
             context = this,
             userData = currentUser,
             userList = userList,
-            userPref = userPref,
+            userDataPref = userDataPref,
             // userMessagePref = userMessagePref,
             onLoginSuccess = { id ->
-                UserPref.setLastUser(this, id)
-                userPref.getUser(id)?.let { user ->
+                UserDataPref.setLastUser(this, id)
+                userDataPref.getUser(id)?.let { user ->
                     currentUser = user.copy().apply {
                         hasPasswordError = false
                     }
-                    userPref.clearPasswordError(id)
+                    userDataPref.clearPasswordError(id)
                 }
                 showMainScreen(1)
             },
@@ -250,15 +250,15 @@ public class MainActivity : Activity() {
     fun showRegisterScreen(anim: Int) {
         val screen = RegistScreen(
             context = this,
-            userPref = userPref,
+            userDataPref = userDataPref,
             onRegisterSuccess = { name, id, pwd ->
                 currentUser = UserData(
                     userId = id,
                     userName = name,
                     password = pwd
                 )
-                userPref.saveUser(currentUser)
-                UserPref.setLastUser(this, id)
+                userDataPref.saveUser(currentUser)
+                UserDataPref.setLastUser(this, id)
                 showMainScreen(1)
             },
             onCancelRegister = { showLoginScreen(4) }
@@ -325,7 +325,7 @@ public class MainActivity : Activity() {
     fun updateUserProfile(newData: UserData) {
         if (newData.userId == currentUser.userId) {
             currentUser.userName = newData.userName
-            userPref.saveUser(currentUser)
+            userDataPref.saveUser(currentUser)
         }
     }
 
@@ -336,7 +336,7 @@ public class MainActivity : Activity() {
             .setMessage("确定要退出登录吗？")
             .setPositiveButton("确定") { _, _ ->
                 currentUser.password = ""
-                userPref.isUserExist(currentUser.userId)
+                userDataPref.isUserExist(currentUser.userId)
                 showLoginScreen(2)
             }
             .setNegativeButton("取消", null)
