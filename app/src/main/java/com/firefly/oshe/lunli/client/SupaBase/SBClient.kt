@@ -1,32 +1,23 @@
 package com.firefly.oshe.lunli.client.SupaBase
 
-import android.content.Context
-import android.widget.Toast
 import com.firefly.oshe.lunli.client.Token
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.query.postgrestRequest
 import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.PostgresChangeFilter
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
-import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 
 object SBClient {
     val client: SupabaseClient = createSupabaseClient(
@@ -145,18 +136,14 @@ object SBClient {
     }.flowOn(Dispatchers.IO)
 
 
-    @Serializable
     data class User(val id: String, val name: String)
-    @Serializable
     data class RoomId(val id: String)
-    @Serializable
     data class NewMessage(
         val id: String,
         val room_id: String,
         val user_id: String,
         val content: String
     )
-    @Serializable
     data class Message(
         val id: String,
         val room_id: String,

@@ -1,12 +1,12 @@
 package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
-import android.net.Uri
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.*
@@ -17,17 +17,19 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.client.Client
 
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserImage
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.dp
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
+import com.google.android.material.textfield.TextInputEditText
 
 // 用户个人主页
 class HomePage(
@@ -118,8 +120,8 @@ class HomePage(
             createCMLView(
                 R.drawable.user,
                 userData.userName,
-                "NONE",
-                userData.userId
+                userData.userId,
+                "NONE"
             ).also {
                 root.addView(it)
             }
@@ -155,8 +157,8 @@ class HomePage(
     private fun createCMLView(
         iconResId: Int,
         name: String,
-        userMessage: String,
-        uid: String
+        uid: String,
+        userMessage: String
     ): LinearLayout {
         return LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
@@ -179,10 +181,13 @@ class HomePage(
             isFocusable = true
 
             ShapeableImageView(context).apply {
-                layoutParams = LayoutParams(52.dp, 52.dp).apply {
+                layoutParams = LayoutParams(64.dp, 64.dp).apply {
                     marginEnd = 18.dp
                 }
                 setImageResource(iconResId)
+                setOnClickListener {
+                    Toast.makeText(context, "Test", Toast.LENGTH_SHORT).show()
+                }
                 addView(this)
             }
 
@@ -195,14 +200,8 @@ class HomePage(
                     layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                         topMargin = 2.dp
                     }
-                    addView(this)
-                }
-                TextView(context).apply {
-                    text = "$userMessage"
-                    textSize = 12f
-                    setTextColor(ContextCompat.getColor(context, R.color.primary_text_color))
-                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                        topMargin = 2.dp
+                    setOnClickListener {
+                        EditMessageDialog("编辑用户名", "用户名", userData.userName)
                     }
                     addView(this)
                 }
@@ -213,11 +212,29 @@ class HomePage(
                     layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                         topMargin = 2.dp
                     }
+                    setOnClickListener {
+                        previousToast?.cancel()
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("UID", uid)
+                        clipboard.setPrimaryClip(clip)
+                        previousToast = Toast.makeText(context, "UID已经复制到剪切板", Toast.LENGTH_SHORT)
+                        previousToast?.show()
+                    }
                     addView(this)
                 }
-            }.also { subLayout ->
-                addView(subLayout)
-            }
+                TextView(context).apply {
+                    text = "$userMessage"
+                    textSize = 12f
+                    setTextColor(ContextCompat.getColor(context, R.color.primary_text_color))
+                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                        topMargin = 2.dp
+                    }
+                    setOnClickListener {
+                        EditMessageDialog("编辑简介", "简介", userInformation.userMessage)
+                    }
+                    addView(this)
+                }
+            }.also { addView(it) }
 
             setOnClickListener {
                 previousToast?.cancel()
@@ -250,30 +267,47 @@ class HomePage(
 
                 previousToast = Toast.makeText(context, displayText, Toast.LENGTH_SHORT)
                 previousToast?.show()
-                // TODO:
-                /*
-                if (userMessage.isNotBlank() && userMessage != "未填写") {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(userMessage))
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            "链接格式错误或浏览器未安装",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } else {
-                    Toast.makeText(
-                        context,
-                        "未设置主页链接",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-               */
             }
 
         }
+    }
+
+    private fun EditMessageDialog(title: String, dialogHint: String, message: String) {
+        var view: LinearLayout
+        view = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+        }
+
+        TextInputEditText(context).apply {
+            hint = "$dialogHint"
+            setTextColor(Color.BLACK)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+                cornerRadius = 8.dp.toFloat()
+                setStroke(1, Color.argb(50, 0, 0, 0))
+            }
+            setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+        }.also {
+            it.setText(message)
+            view.addView(
+                it,
+                LayoutParams(
+                    MATCH_PARENT,
+                    WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 12.dp
+                }
+            )
+        }
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle(title)
+            .setView(view)
+            .setPositiveButton("确定", null)
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun createRoundedBackground(): GradientDrawable {
