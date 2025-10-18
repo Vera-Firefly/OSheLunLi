@@ -19,7 +19,6 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.content.getSystemService
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firefly.oshe.lunli.R
@@ -32,13 +31,13 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.google.gson.Gson
+import okhttp3.Callback
+import kotlin.random.Random
 
 // 用户个人主页
 class HomePage(
@@ -69,6 +68,16 @@ class HomePage(
 
     fun setOnSignOutListener(listener: onSignOutListener) {
         this.signOutListener = listener
+    }
+
+    fun interface onExitToLoginListener {
+        fun onExitToLogin()
+    }
+
+    private var exitToLoginListener: onExitToLoginListener? = null
+
+    fun setOnExitToLoginListener(listener: onExitToLoginListener) {
+        this.exitToLoginListener = listener
     }
 
     fun createView(): LinearLayout {
@@ -139,19 +148,58 @@ class HomePage(
             }
 
             val buttonLayout = LinearLayout(context).apply {
-                orientation = HORIZONTAL
+                orientation = VERTICAL
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                    topMargin = 8.dp
+                    setPadding(8.dp, 0, 8.dp, 4.dp)
                 }
             }
 
-            createButton("退出登录") {
-                signOutListener?.onSignOut()
+            createButton("注销账户") {
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("注销账户?")
+                    .setMessage("警告: 此操作将删除你的账户, 且不可逆!!!")
+                    .setCancelable(false)
+                    .setNegativeButton("确认") { _, _ ->
+                        val seed1 = (Random.nextInt(33, 127)).toChar()
+                        val seed2 = (Random.nextInt(33, 127)).toChar()
+                        val tokens = Token.getToken("$seed1$seed2")
+                        val token = if (Random.nextBoolean()) {
+                            tokens[0]
+                        } else {
+                            tokens[1]
+                        }
+                        val data = UserData(
+                            userData.userId,
+                            userData.userName,
+                            token,
+                            false
+                        )
+                        updateClientMessage(data) {
+                            if (!it) {
+                                Toast.makeText(context, "无法连接Client, 请稍后再试", Toast.LENGTH_SHORT).show()
+                            } else {
+                                userDataPref.deleteUser(userData.userId)
+                                MaterialAlertDialogBuilder(context)
+                                    .setTitle("提示: 按下确认退出至登录页")
+                                    .setMessage("您的账户UID已经永久保留且无法被其他人使用\n申请恢复请联系管理人员\n")
+                                    .setCancelable(false)
+                                    .setPositiveButton("确认") { _, _ ->
+                                        exitToLoginListener?.onExitToLogin()
+                                    }
+                                    .show()
+                            }
+                        }
+                    }
+                    .setPositiveButton("取消", null)
+                    .show()
             }.apply {
-                layoutParams = LayoutParams(0, 48.dp, 1f).apply {
-                    marginStart = 4.dp
-                    marginEnd = 4.dp
-                }
+                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
+            }.also { buttonLayout.addView(it) }
+
+             createButton("退出登录") {
+                 signOutListener?.onSignOut()
+             }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
             root.addView(buttonLayout)
@@ -213,7 +261,7 @@ class HomePage(
                         topMargin = 2.dp
                     }
                     setOnClickListener {
-                        EditMessageDialog(
+                        editMessageDialog(
                             "编辑用户名",
                             "用户名",
                             userData.userName
@@ -224,7 +272,7 @@ class HomePage(
                                 userData.password,
                                 false
                             )
-                            updateSBClientMessage(value) {
+                            updateSBClientUserName(value) {
                                 if (!it) {
                                     previousToast?.cancel()
                                     previousToast = Toast.makeText(
@@ -236,7 +284,7 @@ class HomePage(
                                 } else {
                                     updateClientMessage(data) {
                                         if (!it) {
-                                            updateSBClientMessage(userData.userName)
+                                            updateSBClientUserName(userData.userName)
                                             previousToast?.cancel()
                                             previousToast = Toast.makeText(
                                                 context, "无法连接Client, 请稍后尝试更改用户名",
@@ -280,7 +328,7 @@ class HomePage(
                         topMargin = 2.dp
                     }
                     setOnClickListener {
-                        EditMessageDialog("编辑简介", "简介", userInformation.userMessage)
+                        editMessageDialog("编辑简介", "简介", userInformation.userMessage)
                     }
                     addView(this)
                 }
@@ -322,7 +370,7 @@ class HomePage(
         }
     }
 
-    private fun EditMessageDialog(
+    private fun editMessageDialog(
         title: String,
         dialogHint: String,
         message: String,
@@ -393,7 +441,7 @@ class HomePage(
         )
     }
 
-    private fun updateSBClientMessage(value: String, callBack: (Boolean) -> Unit = {}) {
+    private fun updateSBClientUserName(value: String, callBack: (Boolean) -> Unit = {}) {
         SBClient.updateUser(userData.userId, value) {
             if (!it) {
                 callBack(false)

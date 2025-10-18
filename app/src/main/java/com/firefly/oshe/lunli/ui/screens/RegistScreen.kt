@@ -107,7 +107,7 @@ class RegistScreen(
         }
         val progressDialog: AlertDialog = MaterialAlertDialogBuilder(context)
                 .setView(LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
+                orientation = HORIZONTAL
                 gravity = Gravity.CENTER
                 setPadding(32.dp, 32.dp, 32.dp, 32.dp)
 

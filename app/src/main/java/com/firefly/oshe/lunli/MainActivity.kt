@@ -271,7 +271,7 @@ class MainActivity : Activity() {
         val screen = MainScreen(
             context = this,
             userData = currentUser,
-            onMessage = { getMessageFromData(currentUser.userId) },
+            onExitToLogin = { showLoginScreen(4) },
             onLogout = { showLogoutConfirmDialog() }
         )
         switchScreen(screen, anim)

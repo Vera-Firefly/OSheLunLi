@@ -11,7 +11,6 @@ import com.google.android.material.textview.MaterialTextView
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserImage
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.ChatRoom
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.Community
@@ -20,7 +19,7 @@ import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
 class MainScreen(
     context: Context,
     private val userData: UserData,
-    private val onMessage: () -> Unit,
+    private val onExitToLogin: () -> Unit,
     private val onLogout: () -> Unit
 ) : LinearLayout(context) {
 
@@ -115,6 +114,11 @@ class MainScreen(
             setOnSignOutListener {
                 post {
                     onLogout()
+                }
+            }
+            setOnExitToLoginListener {
+                post {
+                    onExitToLogin()
                 }
             }
         }
