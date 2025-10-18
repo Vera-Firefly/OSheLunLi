@@ -1,5 +1,6 @@
 package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -7,6 +8,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.*
@@ -35,6 +37,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.data.UserDataPref
+import com.google.gson.Gson
 
 // 用户个人主页
 class HomePage(
@@ -46,6 +50,7 @@ class HomePage(
 
     private lateinit var mainView: LinearLayout
     private lateinit var client: Client
+    private lateinit var userDataPref: UserDataPref
 
     private final var pageRecyclerView: RecyclerView? = null
     private final var pageAdapter: BaseUserHomeAdapter? = null
@@ -83,7 +88,7 @@ class HomePage(
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT).apply {
                 setMargins(0, 0, 0, 0)
             }
-            orientation = LinearLayout.VERTICAL
+            orientation = VERTICAL
 
             pageRecyclerView = RecyclerView(context).apply {
                 layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
@@ -105,6 +110,8 @@ class HomePage(
         private val information = mutableListOf<UserInformation>()
 
         init {
+            client = Client(context)
+            userDataPref = UserDataPref(context)
             information.addAll(listOf(
                 UserInformation(
                     userData.userId,
@@ -118,7 +125,7 @@ class HomePage(
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val root = LinearLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
-                orientation = LinearLayout.VERTICAL
+                orientation = VERTICAL
                 setPadding(0, 8.dp, 0, 8.dp)
             }
 
@@ -210,16 +217,37 @@ class HomePage(
                             "编辑用户名",
                             "用户名",
                             userData.userName
-                        ) {
-                            if (it != userData.userName) {
-                                SBClient.updateUser(userData.userId, it) {
-                                    if (!it) {
-                                        previousToast?.cancel()
-                                        previousToast = Toast.makeText(
-                                            context, "用户名修改失败",
-                                            Toast.LENGTH_SHORT
-                                        )
-                                        previousToast?.show()
+                        ) { value ->
+                            val data = UserData(
+                                userData.userId,
+                                value,
+                                userData.password,
+                                false
+                            )
+                            updateSBClientMessage(value) {
+                                if (!it) {
+                                    previousToast?.cancel()
+                                    previousToast = Toast.makeText(
+                                        context,
+                                        "无法连接SBClient, 请稍后尝试更改用户名",
+                                        Toast.LENGTH_SHORT
+                                    )
+                                    previousToast?.show()
+                                } else {
+                                    updateClientMessage(data) {
+                                        if (!it) {
+                                            updateSBClientMessage(userData.userName)
+                                            previousToast?.cancel()
+                                            previousToast = Toast.makeText(
+                                                context, "无法连接Client, 请稍后尝试更改用户名",
+                                                Toast.LENGTH_SHORT
+                                            )
+                                            previousToast?.show()
+                                        } else {
+                                            userDataPref.deleteUser(userData.userId)
+                                            userDataPref.saveUser(data)
+                                            this.setText(value)
+                                        }
                                     }
                                 }
                             }
@@ -338,6 +366,41 @@ class HomePage(
                 callBack(message)
             }
             .show()
+    }
+
+    private fun updateClientMessage(data: UserData, callBack: (Boolean) -> Unit = {}) {
+        val userMap = mapOf(userData.userId to data)
+        val content = try {
+            Gson().toJson(userMap)
+        } catch (e: Exception) {
+            Log.e("RegistScreen", "JSON 转换失败", e)
+            null
+        }
+        client.updateData("UserData", userData.userId, content,
+            object : Client.ResultCallback {
+                override fun onSuccess(content: String?) {
+                    (context as? Activity)?.runOnUiThread {
+                        callBack(true)
+                    }
+                }
+
+                override fun onFailure(error: String?) {
+                    (context as? Activity)?.runOnUiThread {
+                        callBack(false)
+                    }
+                }
+            }
+        )
+    }
+
+    private fun updateSBClientMessage(value: String, callBack: (Boolean) -> Unit = {}) {
+        SBClient.updateUser(userData.userId, value) {
+            if (!it) {
+                callBack(false)
+            } else {
+                callBack(true)
+            }
+        }
     }
 
     private fun createRoundedBackground(): GradientDrawable {

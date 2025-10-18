@@ -23,6 +23,7 @@ import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import androidx.core.graphics.toColorInt
 
 class RegistScreen(
     context: Context,
@@ -207,8 +208,8 @@ class RegistScreen(
         return MaterialButton(context).apply {
             this.text = text
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#2196F3"))
-            rippleColor = ColorStateList.valueOf(Color.parseColor("#66FFFFFF"))
+            setBackgroundColor("#2196F3".toColorInt())
+            rippleColor = ColorStateList.valueOf("#66FFFFFF".toColorInt())
             cornerRadius = 4.dp
             setOnClickListener { onClick() }
         }
