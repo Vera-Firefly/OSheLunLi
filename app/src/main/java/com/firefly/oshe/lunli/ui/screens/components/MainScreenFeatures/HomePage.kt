@@ -8,6 +8,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.text.InputType
 import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
@@ -150,49 +151,19 @@ class HomePage(
                 }
             }
 
-            createButton("注销账户") {
-                MaterialAlertDialogBuilder(context)
-                    .setTitle("注销账户?")
-                    .setMessage("警告: 此操作将删除你的账户, 且不可逆!!!")
-                    .setCancelable(false)
-                    .setNegativeButton("确认") { _, _ ->
-                        val seed1 = (Random.nextInt(33, 127)).toChar()
-                        val seed2 = (Random.nextInt(33, 127)).toChar()
-                        val tokens = Token.getToken("$seed1$seed2")
-                        val token = if (Random.nextBoolean()) {
-                            tokens[0]
-                        } else {
-                            tokens[1]
-                        }
-                        val data = UserData(
-                            userData.userId,
-                            userData.userName,
-                            token,
-                            false
-                        )
-                        updateClientMessage(data) {
-                            if (!it) {
-                                Toast.makeText(context, "无法连接Client, 请稍后再试", Toast.LENGTH_SHORT).show()
-                            } else {
-                                userDataPref.deleteUser(userData.userId)
-                                MaterialAlertDialogBuilder(context)
-                                    .setTitle("提示: 按下确认退出至登录页")
-                                    .setMessage("您的账户UID已经永久保留且无法被其他人使用\n申请恢复请联系管理人员\n")
-                                    .setCancelable(false)
-                                    .setPositiveButton("确认") { _, _ ->
-                                        exitToLoginListener?.onExitToLogin()
-                                    }
-                                    .show()
-                            }
-                        }
-                    }
-                    .setPositiveButton("取消", null)
-                    .show()
+            createButtonGray("修改密码") {
+                onEditPasswordDialog()
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
-             createButton("退出登录") {
+            createButtonRed("注销账户") {
+                onLogOutUserDialog()
+            }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
+            }.also { buttonLayout.addView(it) }
+
+             createButtonRed("退出登录") {
                  signOutListener?.onSignOut()
              }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
@@ -412,6 +383,136 @@ class HomePage(
             .show()
     }
 
+    private fun onEditPasswordDialog() {
+        val dialogView = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+        }
+
+        val oldPasswordInput =  TextInputEditText(context).apply {
+            hint = "旧密码"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            setTextColor(Color.BLACK)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+                cornerRadius = 8.dp.toFloat()
+                setStroke(1, Color.argb(50, 0, 0, 0))
+            }
+            setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+        }.also {
+            dialogView.addView(
+                it,
+                LayoutParams(
+                    MATCH_PARENT,
+                    WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 12.dp
+                }
+            )
+        }
+
+        val newPasswordInput = TextInputEditText(context).apply {
+            hint = "新密码"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            setTextColor(Color.BLACK)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+                cornerRadius = 8.dp.toFloat()
+                setStroke(1, Color.argb(50, 0, 0, 0))
+            }
+            setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+        }.also { dialogView.addView(it, LayoutParams(MATCH_PARENT, WRAP_CONTENT)) }
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle("修改密码")
+            .setView(dialogView)
+            .setNegativeButton("取消", null)
+            .setPositiveButton("确认") { _, _ ->
+                val oldPassword = oldPasswordInput.text.toString()
+                val newPassword = newPasswordInput.text.toString()
+                if (oldPassword == userData.password && oldPassword != newPassword) {
+                    val data = UserData(
+                        userData.userId,
+                        userData.userName,
+                        newPassword,
+                        false
+                    )
+                    updateClientMessage(data) {
+                        if (!it) {
+                            previousToast?.cancel()
+                            previousToast = Toast.makeText(
+                                context, "无法连接Client, 请稍后再试",
+                                Toast.LENGTH_SHORT
+                            )
+                            previousToast?.show()
+                        } else {
+                            userDataPref.deleteUser(userData.userId)
+                            userDataPref.saveUser(UserData(
+                                userData.userId,
+                                userData.userName,
+                                "",
+                                false
+                            ))
+                            MaterialAlertDialogBuilder(context)
+                                .setTitle("提示:")
+                                .setMessage("请退出重新登录, 如遇到问题请联系管理人员")
+                                .setPositiveButton("确认") { _, _ ->
+                                    exitToLoginListener?.onExitToLogin()
+                                }
+                                .show()
+                        }
+                    }
+                } else if (oldPassword == userData.password) {
+                    Toast.makeText(context, "新密码与旧密码一致", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "旧密码输入错误, 请重新输入", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
+    }
+
+    private fun onLogOutUserDialog() {
+        MaterialAlertDialogBuilder(context)
+            .setTitle("注销账户?")
+            .setMessage("警告: 此操作将删除你的账户, 且不可逆!!!")
+            .setCancelable(false)
+            .setNegativeButton("确认") { _, _ ->
+                val seed1 = (Random.nextInt(33, 127)).toChar()
+                val seed2 = (Random.nextInt(33, 127)).toChar()
+                val tokens = Token.getToken("$seed1$seed2")
+                val token = if (Random.nextBoolean()) {
+                    tokens[0]
+                } else {
+                    tokens[1]
+                }
+                val data = UserData(
+                    userData.userId,
+                    userData.userName,
+                    token,
+                    false
+                )
+                updateClientMessage(data) {
+                    if (!it) {
+                        Toast.makeText(context, "无法连接Client, 请稍后再试", Toast.LENGTH_SHORT).show()
+                    } else {
+                        userDataPref.deleteUser(userData.userId)
+                        MaterialAlertDialogBuilder(context)
+                            .setTitle("提示: 按下确认退出至登录页")
+                            .setMessage("您的账户UID已经永久保留且无法被其他人使用\n申请恢复请联系管理人员\n")
+                            .setCancelable(false)
+                            .setPositiveButton("确认") { _, _ ->
+                                exitToLoginListener?.onExitToLogin()
+                            }
+                            .show()
+                    }
+                }
+            }
+            .setPositiveButton("取消", null)
+            .show()
+    }
+
     private fun updateClientMessage(data: UserData, callBack: (Boolean) -> Unit = {}) {
         val userMap = mapOf(userData.userId to data)
         val content = try {
@@ -455,12 +556,28 @@ class HomePage(
         }
     }
 
-    private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
+    private fun createButtonRed(text: String, onClick: () -> Unit): MaterialButton {
         return MaterialButton(context).apply {
             this.text = text
             setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.red)))
             backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
             strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.red))
+            strokeWidth = 2.dp
+            cornerRadius = 8.dp
+            elevation = 0.dp.toFloat()
+            stateListAnimator = null
+
+            setOnClickListener { onClick() }
+            layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
+        }
+    }
+
+    private fun createButtonGray(text: String, onClick: () -> Unit): MaterialButton {
+        return MaterialButton(context).apply {
+            this.text = text
+            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.gray)))
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.gray))
             strokeWidth = 2.dp
             cornerRadius = 8.dp
             elevation = 0.dp.toFloat()
