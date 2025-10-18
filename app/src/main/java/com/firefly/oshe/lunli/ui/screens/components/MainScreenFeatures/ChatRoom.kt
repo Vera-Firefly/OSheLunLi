@@ -31,7 +31,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,10 +106,7 @@ class ChatRoom(
 
     fun createView(): LinearLayout {
         mainView = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
 
             createRoomSelectionView()
             createChatRoomView()
@@ -124,10 +120,7 @@ class ChatRoom(
 
     fun createInputContainer(): LinearLayout {
         return LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                 setPadding(2.dp, 2.dp, 2.dp, 2.dp)
             }
             orientation = HORIZONTAL
@@ -140,10 +133,7 @@ class ChatRoom(
             }
 
             val inputEditText = TextInputEditText(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
+                layoutParams = LayoutParams(0, WRAP_CONTENT).apply {
                     gravity = Gravity.CENTER_VERTICAL
                     weight = 1f
                 }
@@ -156,10 +146,7 @@ class ChatRoom(
             }
 
             val sendButton = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    30.dp,
-                    30.dp
-                ).apply {
+                layoutParams = LayoutParams(30.dp, 30.dp).apply {
                     gravity = Gravity.CENTER_VERTICAL
                     marginStart = 2.dp
                 }
@@ -239,7 +226,7 @@ class ChatRoom(
 
     private fun onRoomStatus() {
         roomStatus = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
             orientation = HORIZONTAL
             gravity = Gravity.END
         }
@@ -269,7 +256,7 @@ class ChatRoom(
         }
 
         roomStatus_add = ShapeableImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 marginEnd = 4.dp
             }
             setPadding(8.dp, 2.dp, 8.dp, 2.dp)
@@ -284,7 +271,7 @@ class ChatRoom(
         }
 
         roomStatus_done = ShapeableImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 marginEnd = 4.dp
             }
             setPadding(8.dp, 2.dp, 8.dp, 2.dp)
@@ -356,9 +343,15 @@ class ChatRoom(
             }
             setPadding(8.dp, 8.dp, 8.dp, 8.dp)
         }
-        dialogView.addView(titleInput, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-            bottomMargin = 12.dp
-        })
+        dialogView.addView(
+            titleInput,
+            LayoutParams(
+                MATCH_PARENT,
+                WRAP_CONTENT
+            ).apply {
+                bottomMargin = 12.dp
+            }
+        )
         val messageInput = TextInputEditText(context).apply {
             hint = "房间描述"
             setTextColor(Color.BLACK)
@@ -370,9 +363,15 @@ class ChatRoom(
             }
             setPadding(8.dp, 8.dp, 8.dp, 8.dp)
         }
-        dialogView.addView(messageInput, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-            bottomMargin = 12.dp
-        })
+        dialogView.addView(
+            messageInput,
+            LayoutParams(
+                MATCH_PARENT,
+                WRAP_CONTENT
+            ).apply {
+                bottomMargin = 12.dp
+            }
+        )
 
         val passwordInput = TextInputEditText(context).apply {
             hint = "房间密码, 留空则视为无密码"
@@ -386,7 +385,7 @@ class ChatRoom(
             }
             setPadding(8.dp, 8.dp, 8.dp, 8.dp)
         }
-        dialogView.addView(passwordInput, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        dialogView.addView(passwordInput, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
         MaterialAlertDialogBuilder(context)
             .setView(dialogView)
@@ -428,7 +427,7 @@ class ChatRoom(
 
     private fun addExitRoom(roomInfo: RoomInfo) {
         exitRoom = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 weight = 1f
             }
             orientation = HORIZONTAL
@@ -449,10 +448,7 @@ class ChatRoom(
                     roomSelection?.let { mainView.addView(it) }
                 }
                 setPadding(6.dp, 6.dp, 6.dp, 6.dp)
-                layoutParams = LinearLayout.LayoutParams(
-                    WRAP_CONTENT, 
-                    WRAP_CONTENT
-                ).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                     gravity = Gravity.CENTER_VERTICAL
                 }
             }
@@ -461,7 +457,7 @@ class ChatRoom(
                 text = roomInfo.title
                 textSize = 16f
                 gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                     gravity = Gravity.CENTER_VERTICAL
                 }
             }
@@ -473,17 +469,11 @@ class ChatRoom(
 
     private fun LinearLayout.createRoomSelectionView() {
         roomSelection = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
             orientation = LinearLayout.VERTICAL
 
             roomRecyclerView = RecyclerView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT
-                )
+                layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
                 layoutManager = LinearLayoutManager(context)
                 roomAdapter = RoomAdapter()
                 adapter = roomAdapter
@@ -495,19 +485,13 @@ class ChatRoom(
 
     private fun LinearLayout.createChatRoomView() {
         chatRoom = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-            ).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT).apply {
                 setMargins(0, 0, 0, 0)
             }
             orientation = LinearLayout.VERTICAL
 
             chatRecyclerView = RecyclerView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.MATCH_PARENT
-                )
+                layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
                 layoutManager = LinearLayoutManager(context).apply {
                     stackFromEnd = true
                 }
@@ -569,10 +553,7 @@ class ChatRoom(
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val root = LinearLayout(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
                 orientation = LinearLayout.VERTICAL
                 setPadding(0, 8.dp, 0, 8.dp)
             }
@@ -609,10 +590,7 @@ class ChatRoom(
             // 分隔线
             val dividing = View(context).apply {
                 setBackgroundColor(Color.LTGRAY)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    1.dp
-                ).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 1.dp).apply {
                     topMargin = 8.dp
                 }
             }
@@ -746,18 +724,15 @@ class ChatRoom(
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             // 根布局 横向
             val rootLayout = LinearLayout(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setPadding(0, 8.dp, 0, 8.dp)
                 }
-                orientation = LinearLayout.HORIZONTAL
+                orientation = HORIZONTAL
             }
 
             // 头像
             val avatar = ImageView(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(36.dp, 36.dp).apply {
+                layoutParams = LayoutParams(36.dp, 36.dp).apply {
                     setMargins(0, 0, 4.dp, 0)
                 }
                 scaleType = ImageView.ScaleType.CENTER_CROP
@@ -768,20 +743,13 @@ class ChatRoom(
 
             // 消息内容区域 纵向
             val contentArea = LinearLayout(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
+                layoutParams = LayoutParams(0, WRAP_CONTENT, 1f)
                 orientation = LinearLayout.VERTICAL
             }
 
             // 发送者名称
             val senderName = TextView(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
                 textSize = 12f
                 setTextColor(Color.GRAY)
                 id = R.id.tv_sender
@@ -790,10 +758,7 @@ class ChatRoom(
 
             // 消息内容容器
             val contentContainer = FrameLayout(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setMargins(0, 4.dp, 0, 0)
                 }
                 id = R.id.fl_content
@@ -826,10 +791,7 @@ class ChatRoom(
             // 清空旧内容并渲染新消息
             contentContainer.removeAllViews()
             val textView = TextView(rootView.context).apply {
-                layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT
-                )
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
                 movementMethod = LinkMovementMethod.getInstance() // 支持链接点击
             }
 
@@ -977,7 +939,7 @@ class ChatRoom(
                 }
                 setPadding(8.dp, 8.dp, 8.dp, 8.dp)
             }
-            view.addView(input, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
             MaterialAlertDialogBuilder(context)
                 .setTitle("请输入房间密码")
@@ -1118,11 +1080,7 @@ class ChatRoom(
                         Toast.makeText(context, "轮询消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                     delay(5000L)
-                }/* finally {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "轮询结束", Toast.LENGTH_SHORT).show()
-                    }
-                }*/
+                }
             }
         }
     }

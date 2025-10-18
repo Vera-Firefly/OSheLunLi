@@ -11,16 +11,12 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.*
 import android.provider.Settings
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
-import android.widget.ProgressBar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.data.UserData
@@ -31,15 +27,12 @@ import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegistScreen
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-import org.json.JSONException
-
 class MainActivity : Activity() {
     private val container by lazy { FrameLayout(this) }
     private var currentScreen: View? = null
 
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
-    // private lateinit var userMessagePref: UserMessagePref
     private var currentUser = UserData()
 
     private val REQUEST_CODE = 12
@@ -275,50 +268,6 @@ class MainActivity : Activity() {
             onLogout = { showLogoutConfirmDialog() }
         )
         switchScreen(screen, anim)
-    }
-
-    // 从数据获取用户信息?
-    private fun getMessageFromData(userId: String) {
-        val progressDialog = MaterialAlertDialogBuilder(this)
-                .setView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                setPadding(32.dp, 32.dp, 32.dp, 32.dp)
-
-                addView(ProgressBar(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        WRAP_CONTENT, 
-                        WRAP_CONTENT
-                    ).apply {
-                        marginEnd = 16.dp
-                    }
-                })
-
-                addView(TextView(context).apply {
-                    text = "正在加载, 请稍等..."
-                    textSize = 16f
-                    setTextColor(ContextCompat.getColor(context, R.color.tan))
-                })
-            })
-            .setCancelable(false)
-            .create()
-        progressDialog.show()
-    }
-
-    // 获取信息: 处理数据并写入本地
-    private fun isGetMessage(IUserMessage: String, IUserId: String) {
-        try {
-            // TODO:
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-    }
-
-    // 信息界面
-    fun showMessageScreen(id: String, anim: Int) {
-        // TODO:
-        // val screen = MessageScreen()
-        // switchScreen(screen, anim)
     }
 
     // 更新用户配置文件

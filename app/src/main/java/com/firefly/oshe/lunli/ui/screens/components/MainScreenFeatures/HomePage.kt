@@ -36,7 +36,6 @@ import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.google.gson.Gson
-import okhttp3.Callback
 import kotlin.random.Random
 
 // 用户个人主页
@@ -82,10 +81,7 @@ class HomePage(
 
     fun createView(): LinearLayout {
         mainView = LinearLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                MATCH_PARENT,
-                MATCH_PARENT
-            )
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
 
             createUserHomePageView()
         }
@@ -462,11 +458,14 @@ class HomePage(
     private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
         return MaterialButton(context).apply {
             this.text = text
-            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, android.R.color.white)))
-            backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(context, R.color.red)
-            )
+            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.red)))
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.red))
+            strokeWidth = 2.dp
             cornerRadius = 8.dp
+            elevation = 0.dp.toFloat()
+            stateListAnimator = null
+
             setOnClickListener { onClick() }
             layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
         }

@@ -77,7 +77,7 @@ class MainScreen(
                     topBar.removeAllViews()
                     getTopBarComponent()?.let { topBar.addView(it) }
                     endBar?.removeAllViews()
-                    endBar?.layoutParams?.height = LayoutParams.WRAP_CONTENT
+                    endBar?.layoutParams?.height = WRAP_CONTENT
                     endBar?.addView(createInputContainer())
                 }
             }
@@ -288,8 +288,6 @@ class MainScreen(
             setPadding(8.dp, 0, 8.dp, 0)
             createEndBarContainer()
         }
-        // 隐藏底部栏
-        // if (selectedTabIndex == 0)
         addView(endBar)
     }
     
@@ -405,8 +403,8 @@ class MainScreen(
             if (backToMain?.parent != null)
                 topBar.removeView(backToMain)
 
-            userAvatar?.visibility = View.VISIBLE
-            backToMain?.visibility = View.GONE
+            userAvatar?.visibility = VISIBLE
+            backToMain?.visibility = GONE
         }
         if (!onUserAvatar && onBackToMain) {
             if (userAvatar?.parent != null)
@@ -418,8 +416,8 @@ class MainScreen(
             if (backToMain?.parent == null)
                 topBar.addView(backToMain)
 
-            userAvatar?.visibility = View.GONE
-            backToMain?.visibility = View.VISIBLE
+            userAvatar?.visibility = GONE
+            backToMain?.visibility = VISIBLE
         }
 
         when (selectedTabIndex) {
@@ -431,7 +429,7 @@ class MainScreen(
                 if (chatRoom?.parent == null) {
                     chatRoom?.let { mainView.addView(it) }
                 }
-                chatRoom?.visibility = View.VISIBLE
+                chatRoom?.visibility = VISIBLE
             }
 
             // 社区
@@ -443,7 +441,7 @@ class MainScreen(
                 if (cePage?.parent == null) {
                     cePage?.let { mainView.addView(it) }
                 }
-                cePage?.visibility = View.VISIBLE
+                cePage?.visibility = VISIBLE
             }
 
             // 主页
@@ -455,7 +453,7 @@ class MainScreen(
                 if (homePage?.parent == null) {
                     homePage?.let { mainView.addView(it) }
                 }
-                homePage?.visibility = View.VISIBLE
+                homePage?.visibility = VISIBLE
             }
         }
 

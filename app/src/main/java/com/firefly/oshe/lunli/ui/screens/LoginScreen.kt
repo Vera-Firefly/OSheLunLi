@@ -3,6 +3,7 @@ package com.firefly.oshe.lunli.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -18,6 +19,7 @@ import android.widget.Toast
 import android.widget.TextView
 import android.widget.ImageButton
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -70,15 +72,15 @@ class LoginScreen(
 
         tilUserId = createEditText("用户ID") {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_NORMAL
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+            layoutParams = LayoutParams(0, WRAP_CONTENT, 1f)
         }
 
         tilPassword = createEditText("密码") {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
 
         spinner = Spinner(context).apply {
@@ -89,26 +91,23 @@ class LoginScreen(
             ) {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                     return View(context).apply {
-                        visibility = View.INVISIBLE
+                        visibility = INVISIBLE
                         layoutParams = ViewGroup.LayoutParams(0, 0)
                     }
                 }
 
                 override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                     val linearLayout = LinearLayout(context).apply {
-                        orientation = LinearLayout.HORIZONTAL
+                        orientation = HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        ).apply {
+                        layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                             setPadding(16.dp, 12.dp, 16.dp, 12.dp)
                         }
                     }
 
                     val tvUserId = TextView(context).apply {
                         text = userList[position]
-                        layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+                        layoutParams = LayoutParams(0, WRAP_CONTENT, 1f)
                         textSize = 16f
                     }
                     tvUserId.setOnClickListener {
@@ -118,7 +117,7 @@ class LoginScreen(
 
                     val btnDelete = ImageButton(context).apply {
                         setImageResource(android.R.drawable.ic_menu_delete)
-                        layoutParams = LinearLayout.LayoutParams(24.dp, 24.dp)
+                        layoutParams = LayoutParams(24.dp, 24.dp)
                         background = context.getDrawable(android.R.drawable.list_selector_background)
                         setOnClickListener {
                             val userId = userList[position]
@@ -148,7 +147,7 @@ class LoginScreen(
                 setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             }
 
-            layoutParams = LinearLayout.LayoutParams(32.dp, 32.dp).apply {
+            layoutParams = LayoutParams(32.dp, 32.dp).apply {
                 marginStart = 4.dp
                 gravity = Gravity.CENTER_VERTICAL
             }
@@ -173,7 +172,7 @@ class LoginScreen(
         createButton("注册") {
             onRegisterClick()
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f).apply {
+            layoutParams = LayoutParams(0, 48.dp, 1f).apply {
                 marginEnd = 4.dp
             }
         }.also { buttonLayout.addView(it) }
@@ -202,12 +201,12 @@ class LoginScreen(
 
             val progressDialog = MaterialAlertDialogBuilder(context)
                     .setView(LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
+                    orientation = HORIZONTAL
                     gravity = Gravity.CENTER
                     setPadding(32.dp, 32.dp, 32.dp, 32.dp)
 
                     addView(ProgressBar(context).apply {
-                        layoutParams = LinearLayout.LayoutParams(
+                        layoutParams = LayoutParams(
                             WRAP_CONTENT, 
                             WRAP_CONTENT
                         ).apply {
@@ -246,7 +245,7 @@ class LoginScreen(
                 })
 
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f).apply {
+            layoutParams = LayoutParams(0, 48.dp, 1f).apply {
                 marginEnd = 4.dp
             }
         }.also { buttonLayout.addView(it) }
@@ -287,13 +286,16 @@ class LoginScreen(
     private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
         return MaterialButton(context).apply {
             this.text = text
-            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, android.R.color.white)))
-            backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(context, R.color.light_blue)
-            )
+            setTextColor("#2196F3".toColorInt())
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            strokeColor = ColorStateList.valueOf("#2196F3".toColorInt())
+            strokeWidth = 2.dp
             cornerRadius = 8.dp
+            elevation = 0.dp.toFloat()
+            stateListAnimator = null
+
             setOnClickListener { onClick() }
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, 48.dp)
+            layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
         }
     }
 

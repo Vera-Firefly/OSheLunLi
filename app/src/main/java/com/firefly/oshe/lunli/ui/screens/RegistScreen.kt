@@ -53,24 +53,24 @@ class RegistScreen(
         }
 
         etUserName = createEditText("用户名").apply {
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
         etUserId = createEditText("用户ID") {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_NORMAL
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
 
         etPassword = createEditText("设置密码") {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }.apply {
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
 
         createButton("取消") {
             onCancelRegister()
         }.apply {
-                layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f).apply {
+                layoutParams = LayoutParams(0, 48.dp, 1f).apply {
                 marginEnd = 4.dp
             }
         }.also { buttonLayout.addView(it) }
@@ -80,7 +80,7 @@ class RegistScreen(
                 checkUDFromClient(name, id, pwd)
             }
         }.apply {
-                layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f).apply {
+                layoutParams = LayoutParams(0, 48.dp, 1f).apply {
                 marginEnd = 4.dp
             }
         }.also { buttonLayout.addView(it) }
@@ -112,7 +112,7 @@ class RegistScreen(
                 setPadding(32.dp, 32.dp, 32.dp, 32.dp)
 
                 addView(ProgressBar(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(
+                    layoutParams = LayoutParams(
                         WRAP_CONTENT, 
                         WRAP_CONTENT
                     ).apply {
@@ -207,10 +207,14 @@ class RegistScreen(
     private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
         return MaterialButton(context).apply {
             this.text = text
-            setTextColor(Color.WHITE)
-            setBackgroundColor("#2196F3".toColorInt())
-            rippleColor = ColorStateList.valueOf("#66FFFFFF".toColorInt())
-            cornerRadius = 4.dp
+            setTextColor("#2196F3".toColorInt())
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            strokeColor = ColorStateList.valueOf("#2196F3".toColorInt())
+            strokeWidth = 2.dp
+            cornerRadius = 8.dp
+            elevation = 0.dp.toFloat()
+            stateListAnimator = null
+
             setOnClickListener { onClick() }
         }
     }
