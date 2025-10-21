@@ -150,9 +150,11 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.6")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.recyclerview:recyclerview:1.2.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.transition:transition:1.4.1")
 
     implementation("com.caverock:androidsvg:1.4")
     implementation("com.github.bumptech.glide:glide:4.13.2")

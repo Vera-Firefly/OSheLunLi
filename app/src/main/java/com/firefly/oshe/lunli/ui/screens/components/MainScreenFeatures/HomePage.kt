@@ -46,16 +46,12 @@ class HomePage(
     private val userData: UserData,
     private val userInformation: UserInformation,
 ) {
-
     private lateinit var mainView: LinearLayout
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
-
-    private final var pageRecyclerView: RecyclerView? = null
-    private final var pageAdapter: BaseUserHomeAdapter? = null
-
+    private var pageRecyclerView: RecyclerView? = null
+    private var pageAdapter: BaseUserHomeAdapter? = null
     private var homePage: LinearLayout? = null
-
     private var onItemClickCount = 0
     private var lastResetTime = System.currentTimeMillis()
     private var previousToast: Toast? = null
@@ -175,7 +171,7 @@ class HomePage(
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            // val rootView = holder.itemView
+            // TODO:
         }
 
         override fun getItemCount() = information.size
@@ -213,7 +209,7 @@ class HomePage(
                 }
                 setImageResource(iconResId)
                 setOnClickListener {
-                    Toast.makeText(context, "Test", Toast.LENGTH_SHORT).show()
+                    // TODO:
                 }
                 addView(this)
             }
