@@ -5,7 +5,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.text.InputType
@@ -36,6 +39,7 @@ import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserDataPref
+import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.google.gson.Gson
 import kotlin.random.Random
 
@@ -49,6 +53,7 @@ class HomePage(
     private lateinit var mainView: LinearLayout
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
+    private lateinit var cropDialog: CropDialog
     private var pageRecyclerView: RecyclerView? = null
     private var pageAdapter: BaseUserHomeAdapter? = null
     private var homePage: LinearLayout? = null
@@ -209,7 +214,9 @@ class HomePage(
                 }
                 setImageResource(iconResId)
                 setOnClickListener {
-                    // TODO:
+                    val sampleBitmap = createSimpleBitmap()
+                    cropDialog = CropDialog(context)
+                    showCropDialog(sampleBitmap)
                 }
                 addView(this)
             }
@@ -331,6 +338,26 @@ class HomePage(
             }
 
         }
+    }
+
+    private fun showCropDialog(sampleBitmap: Bitmap) {
+        cropDialog.showCropDialog(sampleBitmap) { it ->
+            it?.let {
+                Toast.makeText(context, "DONE", Toast.LENGTH_SHORT).show()
+            }
+        }
+        cropDialog.showAtLocation(mainView)
+    }
+
+    private fun createSimpleBitmap(): Bitmap {
+        val bitmap = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint().apply {
+            color = Color.BLUE
+            style = Paint.Style.FILL
+        }
+        canvas.drawRect(0f, 0f, 400f, 400f, paint)
+        return bitmap
     }
 
     private fun editMessageDialog(
