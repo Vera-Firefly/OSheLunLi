@@ -13,6 +13,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
+import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.utils.CropUtils
 import com.google.android.material.button.MaterialButton
@@ -45,7 +46,7 @@ class CropDialog(
 
         createButton(
             "取消",
-            com.firefly.oshe.lunli.R.color.red
+            R.color.red
         ) {
             popupWindow.dismiss()
         }.apply {
@@ -56,7 +57,7 @@ class CropDialog(
 
         createButton(
             "确定",
-            com.firefly.oshe.lunli.R.color.light_blue
+            R.color.light_blue
         ) {
             val croppedBitmap = cropView.cropImage()
             onCropResult(croppedBitmap)

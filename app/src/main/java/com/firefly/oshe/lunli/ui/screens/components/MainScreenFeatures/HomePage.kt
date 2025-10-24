@@ -14,6 +14,7 @@ import android.graphics.drawable.RippleDrawable
 import android.text.InputType
 import android.util.Log
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.*
 import android.widget.LinearLayout
@@ -23,6 +24,7 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.get
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firefly.oshe.lunli.R
@@ -40,6 +42,7 @@ import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.gson.Gson
 import kotlin.random.Random
 
@@ -196,7 +199,7 @@ class HomePage(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(16.dp, 16.dp, 16.dp, 16.dp)
 
-            val rippleColor = ColorStateList.valueOf(Color.parseColor("#20000000"))
+            val rippleColor = ColorStateList.valueOf("#20000000".toColorInt())
             background = RippleDrawable(
                 rippleColor,
                 createRoundedBackground().apply {
@@ -214,9 +217,14 @@ class HomePage(
                 }
                 setImageResource(iconResId)
                 setOnClickListener {
-                    val sampleBitmap = createSimpleBitmap()
+                    val base64 = ImageUtils.resourceToBase64(context, R.drawable.app_icon)
+                    val sampleBitmap = ImageUtils.base64ToBitmap(base64)
                     cropDialog = CropDialog(context)
-                    showCropDialog(sampleBitmap)
+                    sampleBitmap?.let {
+                        showCropDialog(it) { image ->
+                            setImageBitmap(image)
+                        }
+                    }
                 }
                 addView(this)
             }
@@ -224,7 +232,7 @@ class HomePage(
             LinearLayout(context).apply {
                 orientation = VERTICAL
                 TextView(context).apply {
-                    text = "$name"
+                    text = name
                     textSize = 24f
                     setTextColor(ContextCompat .getColor(context, R.color.primary_text_color))
                     layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
@@ -340,24 +348,14 @@ class HomePage(
         }
     }
 
-    private fun showCropDialog(sampleBitmap: Bitmap) {
-        cropDialog.showCropDialog(sampleBitmap) { it ->
+    private fun showCropDialog(bitmap: Bitmap, callBack: (Bitmap) -> Unit = {}) {
+        cropDialog.showCropDialog(bitmap) { it ->
             it?.let {
+                callBack(it)
                 Toast.makeText(context, "DONE", Toast.LENGTH_SHORT).show()
             }
         }
         cropDialog.showAtLocation(mainView)
-    }
-
-    private fun createSimpleBitmap(): Bitmap {
-        val bitmap = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val paint = Paint().apply {
-            color = Color.BLUE
-            style = Paint.Style.FILL
-        }
-        canvas.drawRect(0f, 0f, 400f, 400f, paint)
-        return bitmap
     }
 
     private fun editMessageDialog(

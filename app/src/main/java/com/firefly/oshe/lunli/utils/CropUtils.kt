@@ -7,9 +7,6 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.PopupWindow
-import androidx.core.view.isVisible
 import kotlin.math.abs
 
 class CropUtils @JvmOverloads constructor(
