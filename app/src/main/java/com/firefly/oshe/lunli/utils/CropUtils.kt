@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.abs
+import kotlin.math.min
 
 class CropUtils @JvmOverloads constructor(
     context: Context,
@@ -20,6 +21,10 @@ class CropUtils @JvmOverloads constructor(
     private var cropRect = RectF()
     private var imageRect = RectF()
 
+    private var imageScale = 1.0f
+    private var imageTranslateX = 0f
+    private var imageTranslateY = 0f
+
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val cropPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -31,11 +36,11 @@ class CropUtils @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
-    private var scaleFactor = 1.0f
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var isDragging = false
     private var isResizing = false
+    private var isMovingImage = false
 
     private val scaleGestureDetector: ScaleGestureDetector
     private val gestureDetector: GestureDetector
@@ -72,12 +77,15 @@ class CropUtils @JvmOverloads constructor(
                 imageRect.set((viewWidth - displayWidth) / 2, 0f, (viewWidth + displayWidth) / 2, viewHeight)
             }
 
-            val cropWidth = imageRect.width() * 0.8f
-            val cropHeight = imageRect.height() * 0.8f
-            val cropLeft = imageRect.centerX() - cropWidth / 2
-            val cropTop = imageRect.centerY() - cropHeight / 2
+            val cropSize = min(viewWidth, viewHeight) * 0.7f
+            val cropLeft = (viewWidth - cropSize) / 2
+            val cropTop = (viewHeight - cropSize) / 2
 
-            cropRect.set(cropLeft, cropTop, cropLeft + cropWidth, cropTop + cropHeight)
+            cropRect.set(cropLeft, cropTop, cropLeft + cropSize, cropTop + cropSize)
+
+            imageScale = 1.0f
+            imageTranslateX = 0f
+            imageTranslateY = 0f
         }
     }
 
@@ -85,7 +93,14 @@ class CropUtils @JvmOverloads constructor(
         super.onDraw(canvas)
 
         displayBitmap?.let { bitmap ->
+            canvas.save()
+
+            canvas.translate(imageTranslateX, imageTranslateY)
+            canvas.scale(imageScale, imageScale, width / 2f, height / 2f)
+
             canvas.drawBitmap(bitmap, null, imageRect, paint)
+
+            canvas.restore()
 
             canvas.drawRect(0f, 0f, width.toFloat(), cropRect.top, overlayPaint)
             canvas.drawRect(0f, cropRect.bottom, width.toFloat(), height.toFloat(), overlayPaint)
@@ -95,12 +110,24 @@ class CropUtils @JvmOverloads constructor(
             canvas.drawRect(cropRect, cropPaint)
 
             drawCornerMarkers(canvas)
+
+            drawHintText(canvas)
         }
+    }
+
+    private fun drawHintText(canvas: Canvas) {
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 36f
+            textAlign = Paint.Align.CENTER
+        }
+
+        val text = "请使用双指缩放图片, 滑动裁剪框外部移动图片, 双击任意区域恢复到初始状态"
+        canvas.drawText(text, width / 2f, cropRect.top - 50f, textPaint)
     }
 
     private fun drawCornerMarkers(canvas: Canvas) {
         val cornerSize = 20f
-        val strokeWidth = 4f
 
         canvas.drawLine(cropRect.left, cropRect.top, cropRect.left + cornerSize, cropRect.top, cropPaint)
         canvas.drawLine(cropRect.left, cropRect.top, cropRect.left, cropRect.top + cornerSize, cropPaint)
@@ -126,16 +153,17 @@ class CropUtils @JvmOverloads constructor(
 
                 isResizing = isInCornerArea(event.x, event.y)
                 isDragging = !isResizing && cropRect.contains(event.x, event.y)
+                isMovingImage = !isResizing && !isDragging
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!scaleGestureDetector.isInProgress) {
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
 
-                    if (isResizing) {
-                        adjustCropSize(dx, dy)
-                    } else if (isDragging) {
-                        moveCropRect(dx, dy)
+                    when {
+                        isResizing -> adjustCropSize(dx, dy)
+                        isDragging -> moveCropRect(dx, dy)
+                        isMovingImage -> moveImage(dx, dy)
                     }
 
                     lastTouchX = event.x
@@ -146,6 +174,7 @@ class CropUtils @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isDragging = false
                 isResizing = false
+                isMovingImage = false
             }
         }
         return true
@@ -161,34 +190,54 @@ class CropUtils @JvmOverloads constructor(
 
     private fun adjustCropSize(dx: Float, dy: Float) {
         val minSize = 100f
+        val maxSize = min(width, height) * 0.9f
 
-        if (abs(lastTouchX - cropRect.left) < 50f && abs(lastTouchY - cropRect.top) < 50f) {
-            cropRect.left = (cropRect.left + dx).coerceAtLeast(imageRect.left)
-            cropRect.top = (cropRect.top + dy).coerceAtLeast(imageRect.top)
-        } else if (abs(lastTouchX - cropRect.right) < 50f && abs(lastTouchY - cropRect.top) < 50f) {
-            cropRect.right = (cropRect.right + dx).coerceAtMost(imageRect.right)
-            cropRect.top = (cropRect.top + dy).coerceAtLeast(imageRect.top)
-        } else if (abs(lastTouchX - cropRect.left) < 50f && abs(lastTouchY - cropRect.bottom) < 50f) {
-            cropRect.left = (cropRect.left + dx).coerceAtLeast(imageRect.left)
-            cropRect.bottom = (cropRect.bottom + dy).coerceAtMost(imageRect.bottom)
-        } else if (abs(lastTouchX - cropRect.right) < 50f && abs(lastTouchY - cropRect.bottom) < 50f) {
-            cropRect.right = (cropRect.right + dx).coerceAtMost(imageRect.right)
-            cropRect.bottom = (cropRect.bottom + dy).coerceAtMost(imageRect.bottom)
-        }
+        when {
+            abs(lastTouchX - cropRect.left) < 50f && abs(lastTouchY - cropRect.top) < 50f -> {
+                val newLeft = (cropRect.left + dx).coerceAtLeast(0f)
+                val newTop = (cropRect.top + dy).coerceAtLeast(0f)
+                val sizeChange = min(cropRect.left - newLeft, cropRect.top - newTop)
 
-        if (cropRect.width() < minSize) {
-            if (lastTouchX < cropRect.centerX()) {
-                cropRect.left = cropRect.right - minSize
-            } else {
-                cropRect.right = cropRect.left + minSize
+                cropRect.left = cropRect.left - sizeChange
+                cropRect.top = cropRect.top - sizeChange
+            }
+            abs(lastTouchX - cropRect.right) < 50f && abs(lastTouchY - cropRect.top) < 50f -> {
+                val newRight = (cropRect.right + dx).coerceAtMost(width.toFloat())
+                val newTop = (cropRect.top + dy).coerceAtLeast(0f)
+                val sizeChange = min(newRight - cropRect.right, cropRect.top - newTop)
+
+                cropRect.right = cropRect.right + sizeChange
+                cropRect.top = cropRect.top - sizeChange
+            }
+            abs(lastTouchX - cropRect.left) < 50f && abs(lastTouchY - cropRect.bottom) < 50f -> {
+                val newLeft = (cropRect.left + dx).coerceAtLeast(0f)
+                val newBottom = (cropRect.bottom + dy).coerceAtMost(height.toFloat())
+                val sizeChange = min(cropRect.left - newLeft, newBottom - cropRect.bottom)
+
+                cropRect.left = cropRect.left - sizeChange
+                cropRect.bottom = cropRect.bottom + sizeChange
+            }
+            abs(lastTouchX - cropRect.right) < 50f && abs(lastTouchY - cropRect.bottom) < 50f -> {
+                val newRight = (cropRect.right + dx).coerceAtMost(width.toFloat())
+                val newBottom = (cropRect.bottom + dy).coerceAtMost(height.toFloat())
+                val sizeChange = min(newRight - cropRect.right, newBottom - cropRect.bottom)
+
+                cropRect.right = cropRect.right + sizeChange
+                cropRect.bottom = cropRect.bottom + sizeChange
             }
         }
-        if (cropRect.height() < minSize) {
-            if (lastTouchY < cropRect.centerY()) {
-                cropRect.top = cropRect.bottom - minSize
-            } else {
-                cropRect.bottom = cropRect.top + minSize
-            }
+
+        val size = cropRect.width()
+        if (size < minSize) {
+            val centerX = cropRect.centerX()
+            val centerY = cropRect.centerY()
+            val halfSize = minSize / 2
+            cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+        } else if (size > maxSize) {
+            val centerX = cropRect.centerX()
+            val centerY = cropRect.centerY()
+            val halfSize = maxSize / 2
+            cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
         }
     }
 
@@ -198,40 +247,82 @@ class CropUtils @JvmOverloads constructor(
         val newRight = cropRect.right + dx
         val newBottom = cropRect.bottom + dy
 
-        if (newLeft >= imageRect.left && newRight <= imageRect.right) {
+        if (newLeft >= 0 && newRight <= width) {
             cropRect.left = newLeft
             cropRect.right = newRight
         }
-        if (newTop >= imageRect.top && newBottom <= imageRect.bottom) {
+        if (newTop >= 0 && newBottom <= height) {
             cropRect.top = newTop
             cropRect.bottom = newBottom
         }
     }
 
+    private fun moveImage(dx: Float, dy: Float) {
+        val maxTranslate = 500f * imageScale
+        imageTranslateX = (imageTranslateX + dx).coerceIn(-maxTranslate, maxTranslate)
+        imageTranslateY = (imageTranslateY + dy).coerceIn(-maxTranslate, maxTranslate)
+    }
+
     fun cropImage(): Bitmap? {
         originalBitmap?.let { bitmap ->
-            val scaleX = bitmap.width / imageRect.width()
-            val scaleY = bitmap.height / imageRect.height()
+            val matrix = Matrix()
+            matrix.postTranslate(imageTranslateX, imageTranslateY)
+            matrix.postScale(imageScale, imageScale, width / 2f, height / 2f)
 
-            val cropX = ((cropRect.left - imageRect.left) * scaleX).toInt()
-            val cropY = ((cropRect.top - imageRect.top) * scaleY).toInt()
-            val cropWidth = (cropRect.width() * scaleX).toInt()
-            val cropHeight = (cropRect.height() * scaleY).toInt()
+            val inverseMatrix = Matrix()
+            if (matrix.invert(inverseMatrix)) {
+                val points = floatArrayOf(
+                    cropRect.left, cropRect.top,
+                    cropRect.right, cropRect.top,
+                    cropRect.right, cropRect.bottom,
+                    cropRect.left, cropRect.bottom
+                )
 
-            val safeX = cropX.coerceIn(0, bitmap.width - 1)
-            val safeY = cropY.coerceIn(0, bitmap.height - 1)
-            val safeWidth = cropWidth.coerceIn(1, bitmap.width - safeX)
-            val safeHeight = cropHeight.coerceIn(1, bitmap.height - safeY)
+                inverseMatrix.mapPoints(points)
 
-            return Bitmap.createBitmap(bitmap, safeX, safeY, safeWidth, safeHeight)
+                val transformedCropRect = RectF(
+                    points[0], points[1],
+                    points[4], points[5]
+                )
+
+                val cropSize = min(transformedCropRect.width(), transformedCropRect.height())
+                val centerX = transformedCropRect.centerX()
+                val centerY = transformedCropRect.centerY()
+                val halfSize = cropSize / 2
+
+                val finalCropRect = RectF(
+                    centerX - halfSize, centerY - halfSize,
+                    centerX + halfSize, centerY + halfSize
+                )
+
+                val scaleX = bitmap.width / imageRect.width()
+                val scaleY = bitmap.height / imageRect.height()
+
+                val cropX = ((finalCropRect.left - imageRect.left) * scaleX).toInt()
+                val cropY = ((finalCropRect.top - imageRect.top) * scaleY).toInt()
+                val cropSizePixels = (cropSize * scaleX).toInt()
+
+                val safeX = cropX.coerceIn(0, bitmap.width - 1)
+                val safeY = cropY.coerceIn(0, bitmap.height - 1)
+                val safeSize = cropSizePixels.coerceIn(1, min(bitmap.width - safeX, bitmap.height - safeY))
+
+                return Bitmap.createBitmap(bitmap, safeX, safeY, safeSize, safeSize)
+            }
         }
         return null
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            scaleFactor *= detector.scaleFactor
-            scaleFactor = scaleFactor.coerceIn(0.5f, 3.0f)
+            val previousScale = imageScale
+            imageScale *= detector.scaleFactor
+            imageScale = imageScale.coerceIn(0.1f, 5.0f)
+
+            val focusX = detector.focusX
+            val focusY = detector.focusY
+            imageTranslateX += (focusX - imageTranslateX) * (1 - imageScale / previousScale)
+            imageTranslateY += (focusY - imageTranslateY) * (1 - imageScale / previousScale)
+
             invalidate()
             return true
         }
@@ -248,5 +339,20 @@ class CropUtils @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         setupInitialRects()
+    }
+
+    /**
+     * 设置裁剪框大小比例
+     * @param ratio 相对于屏幕最小边长的比例 (0.1 - 0.9)
+     */
+    fun setCropRatio(ratio: Float) {
+        val safeRatio = ratio.coerceIn(0.1f, 0.9f)
+        val cropSize = min(width, height) * safeRatio
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val halfSize = cropSize / 2
+
+        cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+        invalidate()
     }
 }

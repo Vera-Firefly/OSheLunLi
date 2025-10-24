@@ -1,7 +1,5 @@
 package com.firefly.oshe.lunli
 
-import kotlin.concurrent.thread
-
 import android.Manifest
 import android.app.Activity
 import android.content.DialogInterface
@@ -9,11 +7,13 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
-import android.os.*
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
 import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
-import android.view.ViewGroup.LayoutParams.*
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -21,16 +21,14 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
 import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
-import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
+import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
-import com.firefly.oshe.lunli.client.Client
-import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegistScreen
-import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private val container by lazy { FrameLayout(this) }
