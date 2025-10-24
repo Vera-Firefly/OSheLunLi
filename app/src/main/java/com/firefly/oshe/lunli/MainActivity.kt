@@ -19,12 +19,17 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
+import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
+import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.client.Client
+import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegistScreen
+import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MainActivity : Activity() {
@@ -33,6 +38,7 @@ class MainActivity : Activity() {
 
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
+    private lateinit var imagePicker: ImagePicker
     private var currentUser = UserData()
 
     private val REQUEST_CODE = 12
@@ -71,6 +77,8 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+        imagePicker = ImagePicker(this)
 
         if (currentUser.isValid()) {
             showMainScreen(0)
@@ -144,6 +152,23 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+    }
+
+    fun startImageSelection() {
+        imagePicker.pickImage { uri ->
+            if (uri != null) {
+                ImageSelectionManager.notifyImageSelected(uri)
+            }
+            else
+            {
+                ImageSelectionManager.notifySelectionCancelled()
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        imagePicker.handleActivityResult(requestCode, resultCode, data)
     }
 
     private fun switchScreen(newScreen: View, animationType: Int = 1) {
@@ -291,4 +316,7 @@ class MainActivity : Activity() {
             .setNegativeButton("取消", null)
             .show()
     }
+
+
+
 }

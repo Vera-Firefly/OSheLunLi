@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.net.Uri
 import android.text.InputType
 import android.util.Log
 import android.view.Gravity
@@ -38,6 +39,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
 import androidx.core.graphics.toColorInt
+import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
+import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
+import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
+import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserDataPref
@@ -217,12 +222,13 @@ class HomePage(
                 }
                 setImageResource(iconResId)
                 setOnClickListener {
-                    val base64 = ImageUtils.resourceToBase64(context, R.drawable.app_icon)
-                    val sampleBitmap = ImageUtils.base64ToBitmap(base64)
-                    cropDialog = CropDialog(context)
-                    sampleBitmap?.let {
-                        showCropDialog(it) { image ->
-                            setImageBitmap(image)
+                    ImageRequestCallBack { sampleBitmap ->
+                        cropDialog = CropDialog(context)
+                        sampleBitmap.let {
+                            showCropDialog(it) { image ->
+                                setImageBitmap(image)
+                                val currentBase64 = ImageUtils.bitmapToBase64(image)
+                            }
                         }
                     }
                 }
@@ -352,10 +358,32 @@ class HomePage(
         cropDialog.showCropDialog(bitmap) { it ->
             it?.let {
                 callBack(it)
-                Toast.makeText(context, "DONE", Toast.LENGTH_SHORT).show()
+                previousToast?.cancel()
+                previousToast = Toast.makeText(context, "DONE", Toast.LENGTH_SHORT)
+                previousToast?.show()
             }
         }
         cropDialog.showAtLocation(mainView)
+    }
+
+    private fun ImageRequestCallBack(callBack: (Bitmap) -> Unit = {}) {
+        ImageSelectionManager.setCallback("HomePage", object : SimpleImageCallback {
+            override fun onImageSelected(uri: Uri) {
+                val bitmap = ImageUtils.bitmapFromUri(context, uri)
+                bitmap?.let { callBack(it) }
+            }
+
+            override fun onSelectionCancelled() {
+                onDestroy()
+            }
+
+            override fun onSelectionFailed(error: String) {
+                TODO("Not yet implemented")
+            }
+        })
+        if (context is MainActivity) {
+            context.startImageSelection()
+        }
     }
 
     private fun editMessageDialog(
@@ -607,6 +635,10 @@ class HomePage(
             setOnClickListener { onClick() }
             layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
         }
+    }
+
+    fun onDestroy() {
+        ImageSelectionManager.clearCallback()
     }
 
 }
