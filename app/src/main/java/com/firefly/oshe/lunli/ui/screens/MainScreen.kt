@@ -176,6 +176,7 @@ class MainScreen(
             } else {
                 setImageResource(R.drawable.user)
             }
+            setPadding(2.dp, 2.dp, 2.dp, 2.dp)
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCornerSizes(8f.dp)
                 .build()

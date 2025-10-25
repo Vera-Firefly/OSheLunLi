@@ -234,8 +234,9 @@ class LoginScreen(
                 object : Client.ResultCallback {
                     override fun onSuccess(content: String) {
                         (context as? Activity)?.runOnUiThread {
-                            progressDialog.dismiss()
-                            isLoginToUser(content, inputUserId, inputPassword)
+                            isLoginToUser(content, inputUserId, inputPassword) { _ ->
+                                progressDialog.dismiss()
+                            }
                         }
                     }
 
@@ -262,7 +263,7 @@ class LoginScreen(
         addView(buttonLayout)
     }
 
-    private fun isLoginToUser(IUserData: String, inputUserId:String, inputPassword:String) {
+    private fun isLoginToUser(IUserData: String, inputUserId:String, inputPassword:String, callback: (Boolean) -> Unit = {}) {
         try {
             val rootObject = JSONObject(IUserData)
             rootObject.keys().forEach { userId: String ->
@@ -280,6 +281,7 @@ class LoginScreen(
                         getUserImage(inputUserId) {
                             if (it == "NULL") {
                                 Tools().ShowToast(context, "无法获取用户信息, 请稍后再试")
+                                callback(false)
                             } else {
                                 val inf = UserInformation(
                                     inputUserId,
@@ -288,6 +290,7 @@ class LoginScreen(
                                     ""
                                 )
                                 UserInformationPref(context).saveInformation(inf)
+                                callback(true)
                                 onLoginSuccess(inputUserId)
                             }
                         }
