@@ -9,12 +9,15 @@ import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textview.MaterialTextView
 
 import com.firefly.oshe.lunli.R
+import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserInformation
+import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.ChatRoom
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.Community
 import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
+import com.firefly.oshe.lunli.utils.ImageUtils
 
 class MainScreen(
     context: Context,
@@ -25,11 +28,14 @@ class MainScreen(
 
     private lateinit var topBar: LinearLayout
     private lateinit var mainView: LinearLayout
+    private lateinit var userImage: ShapeableImageView
 
     private lateinit var chatRoomContent: ChatRoom
     private lateinit var cePageContent: Community
     private lateinit var homePageContent: HomePage
     private var selectedTabIndex = 0
+
+    private var userInformation = UserInformationPref(context).getInformation(userData.userId)
 
     private var onUserAvatar: Boolean = true
         set(value) {
@@ -107,7 +113,6 @@ class MainScreen(
     private fun setupHomePage() {
         homePageContent = HomePage(
             context,
-            userData.userId,
             userData,
             UserInformation(userData.userId, userData.userName)
         ).apply {
@@ -119,6 +124,17 @@ class MainScreen(
             setOnExitToLoginListener {
                 post {
                     onExitToLogin()
+                }
+            }
+            setOnUserImageChangeListener {
+                post {
+                    userInformation = UserInformationPref(context).getInformation(userData.userId)
+                    val image = userInformation?.let { ImageUtils.base64ToBitmap(it.userImage) }
+                    if (image != null) {
+                        userImage.setImageBitmap(image)
+                    } else {
+                        Tools().ShowToast(context, "无法更新主页图像, 请重启应用或联系管理人员")
+                    }
                 }
             }
         }
@@ -152,8 +168,14 @@ class MainScreen(
     }
 
     private fun LinearLayout.addUserImage() {
-        ShapeableImageView(context).apply {
-            setImageResource(R.drawable.user)
+        val base64Image = userInformation?.userImage
+        val image = base64Image?.let { ImageUtils.base64ToBitmap(it) }
+        userImage = ShapeableImageView(context).apply {
+            if (image != null) {
+                setImageBitmap(image)
+            } else {
+                setImageResource(R.drawable.user)
+            }
             shapeAppearanceModel = shapeAppearanceModel.toBuilder()
                 .setAllCornerSizes(8f.dp)
                 .build()

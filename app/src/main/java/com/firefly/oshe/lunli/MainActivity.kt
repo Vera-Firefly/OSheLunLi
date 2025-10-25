@@ -24,6 +24,8 @@ import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
+import com.firefly.oshe.lunli.data.UserInformation
+import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegistScreen
@@ -56,7 +58,6 @@ class MainActivity : Activity() {
         setContentView(container)
         client = Client(this)
         userDataPref = UserDataPref(this)
-        // userMessagePref = UserMessagePref(this)
 
         val lastUserId = UserDataPref.getLastUser(this)
 
@@ -70,7 +71,7 @@ class MainActivity : Activity() {
                 }
                 if (user.hasPasswordError) {
                     showLoginScreen(0)
-                    Toast.makeText(this, "请重新输入密码", Toast.LENGTH_LONG).show()
+                    Tools().ShowToast(this, "请重新输入密码")
                     return
                 }
             }
@@ -109,11 +110,10 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("否") { _: DialogInterface?, _: Int ->
                 isNoticedAllFilesPermissionMissing = true
-                Toast.makeText(
+                Tools().ShowToast(
                     this,
                     "拒绝授权将导致部分功能无法正常工作，请重启软件以授权",
-                    Toast.LENGTH_SHORT
-                ).show()
+                )
             }
             .setOnKeyListener { _, keyCode, _ -> keyCode == KeyEvent.KEYCODE_BACK }
             .setCancelable(false)
@@ -141,7 +141,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             hasAllFilesPermission = Environment.isExternalStorageManager()
             if (!hasAllFilesPermission && !isNoticedAllFilesPermissionMissing) {
-                Toast.makeText(this, "拒绝授权将导致部分功能无法正常工作", Toast.LENGTH_SHORT).show()
+                Tools().ShowToast(this, "拒绝授权将导致部分功能无法正常工作")
                 isNoticedAllFilesPermissionMissing = true
                 checkPermission()
             }
@@ -240,13 +240,8 @@ class MainActivity : Activity() {
 
     // 登陆界面事件处理
     fun showLoginScreen(anim: Int) {
-        val userList = userDataPref.getAllUsers().keys.toMutableList()
         val screen = LoginScreen(
             context = this,
-            userData = currentUser,
-            userList = userList,
-            userDataPref = userDataPref,
-            // userMessagePref = userMessagePref,
             onLoginSuccess = { id ->
                 UserDataPref.setLastUser(this, id)
                 userDataPref.getUser(id)?.let { user ->
@@ -266,15 +261,17 @@ class MainActivity : Activity() {
     fun showRegisterScreen(anim: Int) {
         val screen = RegistScreen(
             context = this,
-            userDataPref = userDataPref,
-            onRegisterSuccess = { name, id, pwd ->
-                currentUser = UserData(
-                    userId = id,
-                    userName = name,
-                    password = pwd
+            onRegisterSuccess = { name, id, pwd, image ->
+                currentUser = UserData(id, name, pwd)
+                val inf = UserInformation(
+                    currentUser.userId,
+                    currentUser.userName,
+                    image,
+                    ""
                 )
                 userDataPref.saveUser(currentUser)
                 UserDataPref.setLastUser(this, id)
+                UserInformationPref(this).saveInformation(inf)
                 showMainScreen(1)
             },
             onCancelRegister = { showLoginScreen(4) }
@@ -314,7 +311,5 @@ class MainActivity : Activity() {
             .setNegativeButton("取消", null)
             .show()
     }
-
-
 
 }

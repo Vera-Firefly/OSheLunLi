@@ -30,16 +30,19 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
+import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.data.UserInformation
+import com.firefly.oshe.lunli.data.UserInformationPref
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 import org.json.JSONObject
 import org.json.JSONException
 
 class LoginScreen(
     context: Context,
-    private val userData: UserData,
-    private val userList: MutableList<String>,
-    private val userDataPref: UserDataPref,
-    // private val userMessagePref: UserMessagePref,
     private val onLoginSuccess: (String) -> Unit,
     private val onRegisterClick: () -> Unit
 ) : LinearLayout(context) {
@@ -48,6 +51,9 @@ class LoginScreen(
     private lateinit var spinner: Spinner
     private lateinit var tilUserId: TextInputLayout
     private lateinit var tilPassword: TextInputLayout
+
+    private val userDataPref: UserDataPref = UserDataPref(context)
+    private val userList: MutableList<String> = userDataPref.getAllUsers().keys.toMutableList()
 
     init {
         orientation = VERTICAL
@@ -126,7 +132,6 @@ class LoginScreen(
                                 .setMessage("确定删除本地账户 $userId 吗？")
                                 .setPositiveButton("删除") { _, _ ->
                                     userDataPref.deleteUser(userId)
-                                    // userMessagePref.deleteMessage(userId)
                                     userList.remove(userId)
                                     notifyDataSetChanged()
 
@@ -239,7 +244,7 @@ class LoginScreen(
                             progressDialog.dismiss()
                             var Err: String = error
                             if (error == "UserFile") Err = "未找到该账户, 请检查输入或注册账户"
-                            Toast.makeText(context, Err, Toast.LENGTH_SHORT).show()
+                            Tools().ShowToast(context, Err)
                         }
                     }
                 })
@@ -264,15 +269,28 @@ class LoginScreen(
             rootObject.getJSONObject(userId)?.let { user ->
                     if (inputPassword == user.optString("password")) {
                         userDataPref.deleteUser(inputUserId)
-                        // userMessagePref.deleteMessage(inputUserId)
                         val data = UserData(
-                            userId = user.optString("userId"),
-                            userName = user.optString("userName"),
-                            password = user.optString("password")
+                            user.optString("userId"),
+                            user.optString("userName"),
+                            user.optString("password")
                         )
                         userDataPref.saveUser(data)
                         UserDataPref.setLastUser(context, inputUserId)
-                        onLoginSuccess(inputUserId)
+                        UserInformationPref(context).deleteInformation(inputUserId)
+                        getUserImage(inputUserId) {
+                            if (it == "NULL") {
+                                Tools().ShowToast(context, "无法获取用户信息, 请稍后再试")
+                            } else {
+                                val inf = UserInformation(
+                                    inputUserId,
+                                    user.optString("userName"),
+                                    it,
+                                    ""
+                                )
+                                UserInformationPref(context).saveInformation(inf)
+                                onLoginSuccess(inputUserId)
+                            }
+                        }
                     } else {
                         tilPassword.error = "验证失败，请检查输入"
                     }
@@ -280,6 +298,21 @@ class LoginScreen(
             }
         } catch (e: JSONException) {
             e.printStackTrace()
+        }
+    }
+
+    private fun getUserImage(id: String, callback : (String) -> Unit = {}) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val user = SBClient.fetchUser(id)
+            if (user != null) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback(user.image)
+                }
+            } else {
+                CoroutineScope(Dispatchers.Main).launch {
+                    callback("NULL")
+                }
+            }
         }
     }
 

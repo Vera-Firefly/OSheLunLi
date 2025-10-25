@@ -30,12 +30,14 @@ import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
 import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
 import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.R
+import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
+import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.ImageUtils
@@ -49,7 +51,6 @@ import kotlin.random.Random
 // 用户个人主页
 class HomePage(
     private val context: Context,
-    private val currentId: String,
     private val userData: UserData,
     private val userInformation: UserInformation,
 ) {
@@ -82,6 +83,16 @@ class HomePage(
 
     fun setOnExitToLoginListener(listener: onExitToLoginListener) {
         this.exitToLoginListener = listener
+    }
+
+    fun interface onUserImageChangeListener {
+        fun onUserImageChange()
+    }
+
+    private var userImageChangeListener: onUserImageChangeListener? = null
+
+    fun setOnUserImageChangeListener(listener: onUserImageChangeListener) {
+        this.userImageChangeListener = listener
     }
 
     fun createView(): LinearLayout {
@@ -139,13 +150,18 @@ class HomePage(
                 setPadding(0, 8.dp, 0, 8.dp)
             }
 
-            createCMLView(
-                R.drawable.user,
-                userData.userName,
-                userData.userId,
-                "NONE"
-            ).also {
-                root.addView(it)
+            val inf = UserInformationPref(context).getInformation(userData.userId)
+            val image = inf?.let { ImageUtils.base64ToBitmap(it.userImage) }
+
+            image?.let {
+                createCMLView(
+                    it,
+                    userData.userName,
+                    userData.userId,
+                    "NONE"
+                ).also {
+                    root.addView(it)
+                }
             }
 
             val buttonLayout = LinearLayout(context).apply {
@@ -186,7 +202,7 @@ class HomePage(
     }
 
     private fun createCMLView(
-        iconResId: Int,
+        icon: Bitmap,
         name: String,
         uid: String,
         userMessage: String
@@ -215,14 +231,29 @@ class HomePage(
                 layoutParams = LayoutParams(64.dp, 64.dp).apply {
                     marginEnd = 18.dp
                 }
-                setImageResource(iconResId)
+                setImageBitmap(icon)
                 setOnClickListener {
                     ImageRequestCallBack { sampleBitmap ->
                         cropDialog = CropDialog(context)
                         sampleBitmap.let {
                             showCropDialog(it) { image ->
-                                setImageBitmap(image)
                                 val currentBase64 = ImageUtils.bitmapToBase64(image)
+                                val inf = UserInformation(
+                                    userData.userId,
+                                    userData.userName,
+                                    currentBase64,
+                                    ""
+                                )
+                                updateSBClientUserMessage(inf) {
+                                    if (!it) {
+                                        Tools().ShowToast(context, "头像暂时无法更新")
+                                    } else {
+                                        setImageBitmap(image)
+                                        UserInformationPref(context).deleteInformation(userData.userId)
+                                        UserInformationPref(context).saveInformation(inf)
+                                        userImageChangeListener?.onUserImageChange()
+                                    }
+                                }
                             }
                         }
                     }
@@ -251,25 +282,32 @@ class HomePage(
                                 userData.password,
                                 false
                             )
-                            updateSBClientUserName(value) {
+                            val data_1 = UserInformation(
+                                data.userId,
+                                data.userName,
+                                userInformation.userImage,
+                                userInformation.userMessage
+                            )
+                            updateSBClientUserMessage(data_1) {
                                 if (!it) {
-                                    previousToast?.cancel()
-                                    previousToast = Toast.makeText(
+                                    Tools().ShowToast(
                                         context,
                                         "无法连接SBClient, 请稍后尝试更改用户名",
-                                        Toast.LENGTH_SHORT
                                     )
-                                    previousToast?.show()
                                 } else {
                                     updateClientMessage(data) {
                                         if (!it) {
-                                            updateSBClientUserName(userData.userName)
-                                            previousToast?.cancel()
-                                            previousToast = Toast.makeText(
-                                                context, "无法连接Client, 请稍后尝试更改用户名",
-                                                Toast.LENGTH_SHORT
+                                            updateSBClientUserMessage(
+                                                UserInformation(
+                                                    userData.userId,
+                                                    userData.userName,
+                                                    userInformation.userImage,
+                                                    userInformation.userMessage
+                                                )
                                             )
-                                            previousToast?.show()
+                                            Tools().ShowToast(
+                                                context, "无法连接Client, 请稍后尝试更改用户名",
+                                            )
                                         } else {
                                             userDataPref.deleteUser(userData.userId)
                                             userDataPref.saveUser(data)
@@ -290,12 +328,10 @@ class HomePage(
                         topMargin = 2.dp
                     }
                     setOnClickListener {
-                        previousToast?.cancel()
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("UID", uid)
                         clipboard.setPrimaryClip(clip)
-                        previousToast = Toast.makeText(context, "UID已经复制到剪切板", Toast.LENGTH_SHORT)
-                        previousToast?.show()
+                        Tools().ShowToast(context, "UID已经复制到剪切板")
                     }
                     addView(this)
                 }
@@ -315,7 +351,6 @@ class HomePage(
 
             setOnClickListener {
                 previousToast?.cancel()
-
                 val currentTime = System.currentTimeMillis()
                 val timeZZ = currentTime - lastResetTime
                 if (timeZZ > 5000) {
@@ -353,9 +388,7 @@ class HomePage(
         cropDialog.showCropDialog(bitmap) { it ->
             it?.let {
                 callBack(it)
-                previousToast?.cancel()
-                previousToast = Toast.makeText(context, "DONE", Toast.LENGTH_SHORT)
-                previousToast?.show()
+                Tools().ShowToast(context, "DONE")
             }
         }
         cropDialog.showAtLocation(mainView)
@@ -485,12 +518,7 @@ class HomePage(
                     )
                     updateClientMessage(data) {
                         if (!it) {
-                            previousToast?.cancel()
-                            previousToast = Toast.makeText(
-                                context, "无法连接Client, 请稍后再试",
-                                Toast.LENGTH_SHORT
-                            )
-                            previousToast?.show()
+                            Tools().ShowToast(context, "无法连接Client, 请稍后再试")
                         } else {
                             userDataPref.deleteUser(userData.userId)
                             userDataPref.saveUser(UserData(
@@ -509,9 +537,9 @@ class HomePage(
                         }
                     }
                 } else if (oldPassword == userData.password) {
-                    Toast.makeText(context, "新密码与旧密码一致", Toast.LENGTH_SHORT).show()
+                    Tools().ShowToast(context, "新密码与旧密码一致")
                 } else {
-                    Toast.makeText(context, "旧密码输入错误, 请重新输入", Toast.LENGTH_SHORT).show()
+                    Tools().ShowToast(context, "旧密码输入错误, 请重新输入",)
                 }
             }
             .show()
@@ -539,7 +567,7 @@ class HomePage(
                 )
                 updateClientMessage(data) {
                     if (!it) {
-                        Toast.makeText(context, "无法连接Client, 请稍后再试", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "无法连接Client, 请稍后再试")
                     } else {
                         userDataPref.deleteUser(userData.userId)
                         MaterialAlertDialogBuilder(context)
@@ -582,8 +610,8 @@ class HomePage(
         )
     }
 
-    private fun updateSBClientUserName(value: String, callBack: (Boolean) -> Unit = {}) {
-        SBClient.updateUser(userData.userId, value) {
+    private fun updateSBClientUserMessage(data: UserInformation, callBack: (Boolean) -> Unit = {}) {
+        SBClient.updateUser(data.userId, data.userName, data.userImage) {
             if (!it) {
                 callBack(false)
             } else {

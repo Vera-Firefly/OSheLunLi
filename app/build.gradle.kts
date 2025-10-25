@@ -61,7 +61,7 @@ android {
         applicationId = appPackageName
         minSdk = 28
         versionCode = 102
-        versionName = "1.0.2-alpha"
+        versionName = "1.0.2"
         
         vectorDrawables { 
             useSupportLibrary = true
@@ -175,16 +175,12 @@ dependencies {
     implementation("io.noties.markwon:core:4.6.2") {
         exclude(group = "com.atlassian.commonmark", module = "commonmark")
     }
-    // implementation("io.noties:markwon:ext-tables:4.6.2")
-    // implementation("io.noties:markwon:html:4.6.2")
     implementation("io.noties.markwon:image:4.6.2") {
         exclude(group = "com.atlassian.commonmark", module = "commonmark")
     }
     implementation("io.noties.markwon:image-glide:4.6.2") {
         exclude(group = "com.atlassian.commonmark", module = "commonmark")
     }
-    // implementation("io.noties:markwon:linkify:4.6.2")
-
     implementation("org.commonmark:commonmark:0.18.2")
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.18.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")

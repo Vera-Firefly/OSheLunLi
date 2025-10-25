@@ -31,11 +31,11 @@ object SBClient {
         httpEngine = io.ktor.client.engine.cio.CIO.create()
     }
 
-    fun createUser(userId: String, username: String) {
+    fun createUser(userId: String, username: String, userImage: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.postgrest["users"].insert(
-                    User(id = userId, name = username)
+                    User(id = userId, name = username, image = userImage)
                 )
                 println("User inserted: $userId")
             } catch (e: Exception) {
@@ -60,12 +60,13 @@ object SBClient {
         }
     }
 
-    fun updateUser(userId: String, userName: String, callback: (Boolean) -> Unit = {}) {
+    fun updateUser(userId: String, userName: String, userImage: String, callback: (Boolean) -> Unit = {}) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.postgrest["users"]
                     .update({
                         set("name", userName)
+                        set("image", userImage)
                     }
                     ) {
                         filter {
@@ -164,7 +165,7 @@ object SBClient {
 
 
     @Serializable
-    data class User(val id: String, val name: String)
+    data class User(val id: String, val name: String, val image: String)
 
     @Serializable
     data class RoomId(val id: String)

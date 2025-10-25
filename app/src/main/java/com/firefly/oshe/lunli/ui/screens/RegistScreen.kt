@@ -24,11 +24,12 @@ import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import androidx.core.graphics.toColorInt
+import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.utils.ImageUtils
 
 class RegistScreen(
     context: Context,
-    private val userDataPref: UserDataPref,
-    private val onRegisterSuccess: (String, String, String) -> Unit,
+    private val onRegisterSuccess: (String, String, String, String) -> Unit,
     private val onCancelRegister: () -> Unit
 ) : LinearLayout(context) {
 
@@ -137,7 +138,7 @@ class RegistScreen(
                         progressDialog.dismiss()
                         showError(2, "用户ID已存在")
                         val error: String = "账户 " + UserId + " 已存在, 请勿重复创建"
-                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, error)
                     }
                 }
 
@@ -155,15 +156,25 @@ class RegistScreen(
                 override fun onSuccess(content: String) {
                     (context as? Activity)?.runOnUiThread {
                         progressDialog.dismiss()
-                        onRegisterSuccess(UserName, UserId, UserPWD)
-                        SBClient.createUser(UserId, UserName)
+                        val drawable = context.getDrawable(R.drawable.user)
+                        val image = drawable?.let { ImageUtils.drawableToBase64(it) }
+                        if (image != null) {
+                            SBClient.createUser(
+                                UserId,
+                                UserName,
+                                image
+                            )
+                            onRegisterSuccess(UserName, UserId, UserPWD, image)
+                        } else {
+                            Tools().ShowToast(context, "资源创建失败, 请联系管理人员")
+                        }
                     }
                 }
 
                 override fun onFailure(error: String) {
                     (context as? Activity)?.runOnUiThread {
                         progressDialog.dismiss()
-                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, error)
                     }
                 }
             })
@@ -220,7 +231,7 @@ class RegistScreen(
     }
 
     private fun showError(fieldType: Int, message: String): Nothing? {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        Tools().ShowToast(context, message)
         when (fieldType) {
             1 -> etUserName.error = message
             2 -> etUserId.error = message

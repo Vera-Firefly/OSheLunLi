@@ -25,8 +25,12 @@ import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.MarkdownRenderer
+import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.data.UserInformation
+import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.utils.ImageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -194,18 +198,22 @@ class ChatRoom(
                 setOnClickListener {
                     val markdownText = inputEditText.text.toString()
                     val currentId = UUID.randomUUID().toString()
+                    val inf = UserInformationPref(context).getInformation(userData.userId)
+                    var image = "NULL"
+                    inf?.userImage?.let { image = it }
                     if (markdownText.isNotEmpty()) {
                         addMessage(
                             Message(
-                                id = currentId,
-                                sender = userData.userName + " (" + userData.userId + ")",
-                                content = markdownText
+                                currentId,
+                                userData.userName + " (" + userData.userId + ")",
+                                image,
+                                markdownText
                             )
                         )
                         currentRoomId?.let { roomId ->
                             SBClient.sendMessage(currentId, roomId, userData.userId, markdownText) {
                                 if (!it) {
-                                    Toast.makeText(context, "$currentId: 发送失败", Toast.LENGTH_SHORT).show()
+                                    Tools().ShowToast(context, "$currentId: 发送失败")
                                 }
                             }
                         }
@@ -315,7 +323,7 @@ class ChatRoom(
                 true
             }
             menu.add("删除Room").setOnMenuItemClickListener {
-                Toast.makeText(context, "单击房间以删除, 注意: 只能删除自己创建的房间, 否则你将被骗(PS: 这是AS推荐我加的一句)", Toast.LENGTH_SHORT).show()
+                Tools().ShowToast(context, "单击房间以删除, 注意: 只能删除自己创建的房间, 否则你将被骗(PS: 这是AS推荐我加的一句)")
                 isAddNewRoom = false
                 roomStatus?.removeAllViews()
                 roomStatus_done?.let {
@@ -396,7 +404,7 @@ class ChatRoom(
                 val roomPassword = passwordInput.text.toString()
 
                 if (title.isEmpty()) {
-                    Toast.makeText(context, "请输入房间标题", Toast.LENGTH_SHORT).show()
+                    Tools().ShowToast(context, "请输入房间标题")
                     addRoomDialog()
                     return@setPositiveButton
                 }
@@ -413,11 +421,11 @@ class ChatRoom(
                     override fun onSuccess(content: String?) {
                         addRoom(newRoom)
                         SBClient.createRoom(newRoom.id)
-                        Toast.makeText(context, "房间创建成功", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "房间创建成功")
                     }
 
                     override fun onFailure(error: String?) {
-                        Toast.makeText(context, "创建失败, 请重新创建", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "创建失败, 请重新创建")
                     }
                 })
             }
@@ -632,16 +640,11 @@ class ChatRoom(
                                         override fun onSuccess(content: String?) {
                                             rooms.remove(room)
                                             notifyItemRemoved(holder.bindingAdapterPosition)
-                                            Toast.makeText(context, "删除成功", Toast.LENGTH_SHORT)
-                                                .show()
+                                            Tools().ShowToast(context, "删除成功")
                                         }
 
                                         override fun onFailure(error: String?) {
-                                            Toast.makeText(
-                                                context,
-                                                "貌似删除失败了🤔, 请尝试重新删除",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            Tools().ShowToast(context, "貌似删除失败了🤔, 请尝试重新删除")
                                         }
                                     })
                             } else {
@@ -649,7 +652,7 @@ class ChatRoom(
                             }
                         }
                     } else {
-                        Toast.makeText(context, "别人的房间你删逆🐎呢", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "别人的房间你删逆🐎呢")
                     }
                 }
             }
@@ -671,8 +674,9 @@ class ChatRoom(
         private val messages = mutableListOf<Message>()
         private val systemMessages = listOf(
             Message(
-                id = "1",
-                sender = "系统",
+                "1",
+                "系统",
+                "NULL",
                 content = """
                     ## 欢迎使用Markdown聊天室
                     - 支持层级显示
@@ -731,12 +735,11 @@ class ChatRoom(
             }
 
             // 头像
-            val avatar = ImageView(parent.context).apply {
+            val avatar = ShapeableImageView(parent.context).apply {
                 layoutParams = LayoutParams(36.dp, 36.dp).apply {
                     setMargins(0, 0, 4.dp, 0)
                 }
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                setImageResource(android.R.drawable.sym_def_app_icon)
                 id = R.id.iv_avatar
             }
             rootLayout.addView(avatar) // 添加到根布局
@@ -783,10 +786,13 @@ class ChatRoom(
 
             // 设置数据
             senderName.text = message.sender
-            avatar.setImageResource(
-                if (message.sender == "系统") android.R.drawable.ic_menu_info_details
-                else android.R.drawable.sym_def_app_icon
-            )
+            avatar.setImageResource(android.R.drawable.ic_menu_report_image)
+            if (message.sender == "系统") {
+                avatar.setImageResource(android.R.drawable.ic_menu_info_details)
+            } else if (message.senderImage != "NULL") {
+                val image = ImageUtils.base64ToBitmap(message.senderImage)
+                avatar.setImageBitmap(image)
+            }
 
             // 清空旧内容并渲染新消息
             contentContainer.removeAllViews()
@@ -810,7 +816,7 @@ class ChatRoom(
     private fun loadRooms(callback: (Boolean) -> Unit = {}) {
         client = Client(context)
         if (isLoading) {
-            Toast.makeText(context, "正在加载房间列表, 请稍后...", Toast.LENGTH_SHORT).show()
+            Tools().ShowToast(context, "正在加载房间列表, 请稍后...")
             callback(false)
         } else {
             isLoading = true
@@ -949,11 +955,10 @@ class ChatRoom(
                     if (password.equals(room.roomPassword)) {
                         currentRoomId = room.id
                         loadRoomMessages(room.id)
-                        Toast.makeText(context, "Hello!\n${userData.userName} (${userData.userId})",
-                            Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "Hello!\n${userData.userName} (${userData.userId})")
                         callback(true)
                     } else {
-                        Toast.makeText(context, "错误的密码", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "错误的密码")
                         callback(false)
                     }
                 }
@@ -964,13 +969,26 @@ class ChatRoom(
         }
     }
 
-    private suspend fun getUserName(userId: String): String {
-        return userCache[userId] ?: run {
-            val user = SBClient.fetchUser(userId)
-            user?.name?.also { name ->
-                userCache[userId] = name
-            } ?: "未知用户"
+    private suspend fun getUserInf(userId: String): UserInformation {
+        val drawable = context.getDrawable(R.drawable.user)
+        val base64Image = drawable?.let { ImageUtils.drawableToBase64(it) }
+        var image = "NULL"
+        if (base64Image != null) {
+            image = base64Image
         }
+        var inf = UserInformation(userId, "未知用户", image, "")
+        userCache[userId] ?: run {
+            val user = SBClient.fetchUser(userId)
+            if (user != null) {
+                inf = UserInformation(
+                    userId,
+                    user.name,
+                    user.image,
+                    ""
+                )
+            }
+        }
+        return inf
     }
 
     private fun loadRoomMessages(roomId: String) {
@@ -1004,11 +1022,12 @@ class ChatRoom(
                 try {
                     SBClient.subscribeMessages(roomId).collect { message ->
                         val processedMessage = withContext(Dispatchers.IO) {
-                            val senderName = getUserName(message.user_id)
+                            val sender = getUserInf(message.user_id)
                             Message(
-                                id = message.id,
-                                sender = "$senderName (${message.user_id})",
-                                content = message.content
+                                message.id,
+                                "${sender.userName} (${message.user_id})",
+                                sender.userImage,
+                                message.content
                             )
                         }
 
@@ -1029,15 +1048,11 @@ class ChatRoom(
                 } catch (e: Exception) {
                     if (currentRoomId == roomId) {
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "订阅消息失败: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Tools().ShowToast(context, "订阅消息失败: ${e.message}")
                         }
                     }
                 } finally {
-                    Toast.makeText(context, "订阅消息结束", Toast.LENGTH_SHORT).show()
+                    Tools().ShowToast(context, "订阅消息结束")
                 }
             }
         }
@@ -1045,14 +1060,12 @@ class ChatRoom(
 
     private fun startPollingMessages(roomId: String) {
         unsubscribeFromMessages()
-        // Toast.makeText(context, "开始轮询消息", Toast.LENGTH_SHORT).show()
         pollingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && currentRoomId == roomId) {
                 try {
                     val messages = SBClient.fetchMessages(roomId)
 
                     val newMessages = if (lastPollTime > 0) {
-                        // Toast.makeText(context, "轮询到${messages.size}条新消息", Toast.LENGTH_SHORT).show()
                         messages.filter { dbMessage ->
                             val messageTime = parseIso8601WithTimezone(dbMessage.created_at)
                             messageTime > lastPollTime
@@ -1077,7 +1090,7 @@ class ChatRoom(
                     delay(3000L)
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "轮询消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Tools().ShowToast(context, "轮询消息失败: ${e.message}")
                     }
                     delay(5000L)
                 }
@@ -1108,14 +1121,14 @@ class ChatRoom(
     }
 
     private fun processNewMessages(messages: List<SBClient.Message>) {
-        // Toast.makeText(context, "轮询到${messages.size}条新消息", Toast.LENGTH_SHORT).show()
         CoroutineScope(Dispatchers.IO).launch {
             messages.forEach { dbMessage ->
-                val senderName = getUserName(dbMessage.user_id)
+                val sender = getUserInf(dbMessage.user_id)
                 val message = Message(
-                    id = dbMessage.id,
-                    sender = "$senderName (${dbMessage.user_id})",
-                    content = dbMessage.content
+                    dbMessage.id,
+                    "${sender.userName} (${dbMessage.user_id})",
+                    sender.userImage,
+                    dbMessage.content
                 )
                 withContext(Dispatchers.Main) {
                     (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
@@ -1147,11 +1160,12 @@ class ChatRoom(
             }
 
             messages.forEach { dbMessage ->
-                val senderName = getUserName(dbMessage.user_id)
+                val sender = getUserInf(dbMessage.user_id)
                 val message = Message(
-                    id = dbMessage.id,
-                    sender = "$senderName (${dbMessage.user_id})",
-                    content = dbMessage.content
+                    dbMessage.id,
+                    "${sender.userName} (${dbMessage.user_id})",
+                    sender.userImage,
+                    dbMessage.content
                 )
                 if (currentRoomId == roomId) {
                     (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
@@ -1162,7 +1176,7 @@ class ChatRoom(
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "加载消息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Tools().ShowToast(context, "加载消息失败: ${e.message}")
             }
         }
     }
@@ -1191,9 +1205,10 @@ class ChatRoom(
             (0 until jsonArray.length()).map { i ->
                 val obj = jsonArray.getJSONObject(i)
                 Message(
-                    id = obj.getString("id"),
-                    sender = obj.getString("sender"),
-                    content = obj.getString("content")
+                    obj.getString("id"),
+                    obj.getString("sender"),
+                    obj.getString("image"),
+                    obj.getString("content")
                 )
             }
         } catch (e: Exception) {
@@ -1207,6 +1222,7 @@ class ChatRoom(
             val obj = JSONObject().apply {
                 put("id", message.id)
                 put("sender", message.sender)
+                put("image", message.senderImage)
                 put("content", message.content)
             }
             jsonArray.put(obj)

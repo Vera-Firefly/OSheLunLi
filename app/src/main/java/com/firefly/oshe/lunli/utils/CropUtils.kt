@@ -15,7 +15,6 @@ class CropUtils @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-
     private var originalBitmap: Bitmap? = null
     private var displayBitmap: Bitmap? = null
     private var cropRect = RectF()
