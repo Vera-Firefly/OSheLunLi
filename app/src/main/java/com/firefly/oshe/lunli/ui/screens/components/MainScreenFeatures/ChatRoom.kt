@@ -28,6 +28,7 @@ import com.firefly.oshe.lunli.MarkdownRenderer
 import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
@@ -67,11 +68,11 @@ class ChatRoom(
     private var roomStatus_done: ShapeableImageView? = null
 
     private var currentRoomId: String? = null
-    private val sharedPref by lazy {
-        context.getSharedPreferences("ChatRoomPrefs_${userData.userId}", Context.MODE_PRIVATE)
-    }
     private val userCacheManager by lazy {
         SeparateUserCacheManager(context)
+    }
+    private val userMessageCacheManager by lazy {
+        MessageCacheManager(context, userData.userId)
     }
     private var messageSubscription: Job? = null
     private var currentSubscription: Job? = null
@@ -319,6 +320,48 @@ class ChatRoom(
         }
     }
 
+    private fun addExitRoom(roomInfo: RoomInfo) {
+        exitRoom = LinearLayout(context).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                weight = 1f
+            }
+            orientation = HORIZONTAL
+            gravity = Gravity.START
+
+            val exitButton = ShapeableImageView(context).apply {
+                setImageResource(R.drawable.arrow_left_bold)
+                shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                    .setAllCornerSizes(8f.dp)
+                    .build()
+                setOnClickListener {
+                    unsubscribeFromMessages()
+                    (chatAdapter as? ChatAdapter)?.getMessages()?.let { messages ->
+                        userMessageCacheManager.saveMessagesToCache(roomInfo.id, messages)
+                    }
+                    backClickListener?.onBackClicked()
+                    mainView.removeAllViews()
+                    roomSelection?.let { mainView.addView(it) }
+                }
+                setPadding(6.dp, 6.dp, 6.dp, 6.dp)
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+            }
+
+            val title = MaterialTextView(context).apply {
+                text = roomInfo.title
+                textSize = 16f
+                gravity = Gravity.CENTER
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+            }
+
+            addView(exitButton, 36.dp, 36.dp)
+            addView(title)
+        }
+    }
+
     private fun showRoomStatusSet(view: View) {
         PopupMenu(context, view).apply {
             menu.add("新建Room").setOnMenuItemClickListener {
@@ -434,48 +477,6 @@ class ChatRoom(
             }
             .setNegativeButton("取消", null)
             .show()
-    }
-
-    private fun addExitRoom(roomInfo: RoomInfo) {
-        exitRoom = LinearLayout(context).apply {
-            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                weight = 1f
-            }
-            orientation = HORIZONTAL
-            gravity = Gravity.START
-
-            val exitButton = ShapeableImageView(context).apply {
-                setImageResource(R.drawable.arrow_left_bold)
-                shapeAppearanceModel = shapeAppearanceModel.toBuilder()
-                    .setAllCornerSizes(8f.dp)
-                    .build()
-                setOnClickListener {
-                    unsubscribeFromMessages()
-                    (chatAdapter as? ChatAdapter)?.getMessages()?.let { messages ->
-                        saveMessagesToCache(roomInfo.id, messages)
-                    }
-                    backClickListener?.onBackClicked()
-                    mainView.removeAllViews()
-                    roomSelection?.let { mainView.addView(it) }
-                }
-                setPadding(6.dp, 6.dp, 6.dp, 6.dp)
-                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-            }
-
-            val title = MaterialTextView(context).apply {
-                text = roomInfo.title
-                textSize = 16f
-                gravity = Gravity.CENTER
-                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-            }
-
-            addView(exitButton, 36.dp, 36.dp)
-            addView(title)
-        }
     }
 
     private fun LinearLayout.createRoomSelectionView() {
@@ -986,7 +987,7 @@ class ChatRoom(
         currentRoomId = roomId
         (chatAdapter as? ChatAdapter)?.clearMessages()
 
-        val cachedMessages = loadCachedMessages(roomId)
+        val cachedMessages = userMessageCacheManager.loadCachedMessages(roomId)
         cachedMessages.forEach { message ->
             (chatAdapter as? ChatAdapter)?.addMessageIfNotExists(message)
         }
@@ -1031,7 +1032,7 @@ class ChatRoom(
                                 )
                             }
                             (chatAdapter as? ChatAdapter)?.getMessages()?.let { messages ->
-                                saveMessagesToCache(roomId, messages)
+                                userMessageCacheManager.saveMessagesToCache(roomId, messages)
                             }
                         }
                     }
@@ -1126,7 +1127,7 @@ class ChatRoom(
                 }
 
                 (chatAdapter as? ChatAdapter)?.getMessages()?.let { allMessages ->
-                    saveMessagesToCache(currentRoomId ?: return@let, allMessages)
+                    userMessageCacheManager.saveMessagesToCache(currentRoomId ?: return@let, allMessages)
                 }
             }
         }
@@ -1188,35 +1189,4 @@ class ChatRoom(
         currentSubscription = null
     }
 
-    private fun loadCachedMessages(roomId: String): List<Message> {
-        val json = sharedPref.getString("room_$roomId", null) ?: return emptyList()
-        return try {
-            val jsonArray = JSONArray(json)
-            (0 until jsonArray.length()).map { i ->
-                val obj = jsonArray.getJSONObject(i)
-                Message(
-                    obj.getString("id"),
-                    obj.getString("sender"),
-                    obj.getString("image"),
-                    obj.getString("content")
-                )
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun saveMessagesToCache(roomId: String, messages: List<Message>) {
-        val jsonArray = JSONArray()
-        messages.forEach { message ->
-            val obj = JSONObject().apply {
-                put("id", message.id)
-                put("sender", message.sender)
-                put("image", message.senderImage)
-                put("content", message.content)
-            }
-            jsonArray.put(obj)
-        }
-        sharedPref.edit().putString("room_$roomId", jsonArray.toString()).apply()
-    }
 }
