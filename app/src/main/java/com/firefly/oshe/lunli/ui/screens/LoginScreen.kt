@@ -296,11 +296,12 @@ class LoginScreen(
                         }
                     } else {
                         tilPassword.error = "验证失败，请检查输入"
+                        callback(false)
                     }
                 }
             }
         } catch (e: JSONException) {
-            e.printStackTrace()
+            callback(false)
         }
     }
 
