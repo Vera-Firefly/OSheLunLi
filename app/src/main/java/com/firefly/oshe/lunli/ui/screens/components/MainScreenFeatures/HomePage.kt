@@ -151,10 +151,20 @@ class HomePage(
             }
 
             val inf = UserInformationPref(context).getInformation(userData.userId)
-            val image: Bitmap? = inf?.let { ImageUtils.base64ToBitmap(it.userImage) }
+            val image: Bitmap? = inf?.let {
+                try {
+                    ImageUtils.base64ToBitmap(it.userImage)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val defaultIconBase64 = context.getDrawable(R.drawable.user)?.let { drawable ->
+                ImageUtils.drawableToBase64(drawable)
+            }
+            val defaultIcon = defaultIconBase64?.let { ImageUtils.base64ToBitmap(it) }
 
             createCMLView(
-                image!!,
+                image ?: defaultIcon ?: createDefaultBitmap(),
                 userData.userName,
                 userData.userId,
                 "NONE"
@@ -190,6 +200,24 @@ class HomePage(
             root.addView(buttonLayout)
 
             return object : RecyclerView.ViewHolder(root) {}
+        }
+
+        private fun createDefaultBitmap(): Bitmap {
+            val size = 64.dp
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+
+            val paint = android.graphics.Paint().apply {
+                color = context.getColor(R.color.gray)
+                isAntiAlias = true
+            }
+            canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+
+            val userDrawable = context.getDrawable(R.drawable.user)
+            userDrawable?.setBounds(0, 0, size, size)
+            userDrawable?.draw(canvas)
+
+            return bitmap
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
