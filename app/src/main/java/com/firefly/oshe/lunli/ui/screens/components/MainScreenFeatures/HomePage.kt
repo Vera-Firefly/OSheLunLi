@@ -151,17 +151,15 @@ class HomePage(
             }
 
             val inf = UserInformationPref(context).getInformation(userData.userId)
-            val image = inf?.let { ImageUtils.base64ToBitmap(it.userImage) }
+            val image: Bitmap? = inf?.let { ImageUtils.base64ToBitmap(it.userImage) }
 
-            image?.let {
-                createCMLView(
-                    it,
-                    userData.userName,
-                    userData.userId,
-                    "NONE"
-                ).also {
-                    root.addView(it)
-                }
+            createCMLView(
+                image!!,
+                userData.userName,
+                userData.userId,
+                "NONE"
+            ).also {
+                root.addView(it)
             }
 
             val buttonLayout = LinearLayout(context).apply {

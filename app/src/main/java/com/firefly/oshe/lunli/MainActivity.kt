@@ -16,7 +16,6 @@ import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
@@ -28,7 +27,7 @@ import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
-import com.firefly.oshe.lunli.ui.screens.RegistScreen
+import com.firefly.oshe.lunli.ui.screens.RegisterScreen
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlin.concurrent.thread
 
@@ -259,7 +258,7 @@ class MainActivity : Activity() {
 
     // 注册界面事件处理
     fun showRegisterScreen(anim: Int) {
-        val screen = RegistScreen(
+        val screen = RegisterScreen(
             context = this,
             onRegisterSuccess = { name, id, pwd, image ->
                 currentUser = UserData(id, name, pwd)

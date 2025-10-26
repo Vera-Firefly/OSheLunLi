@@ -28,6 +28,7 @@ import com.firefly.oshe.lunli.MarkdownRenderer
 import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
+import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.utils.ImageUtils
@@ -69,7 +70,9 @@ class ChatRoom(
     private val sharedPref by lazy {
         context.getSharedPreferences("ChatRoomPrefs_${userData.userId}", Context.MODE_PRIVATE)
     }
-    private val userCache = mutableMapOf<String, String>()
+    private val userCacheManager by lazy {
+        SeparateUserCacheManager(context)
+    }
     private var messageSubscription: Job? = null
     private var currentSubscription: Job? = null
 
@@ -970,25 +973,12 @@ class ChatRoom(
     }
 
     private suspend fun getUserInf(userId: String): UserInformation {
-        val drawable = context.getDrawable(R.drawable.user)
-        val base64Image = drawable?.let { ImageUtils.drawableToBase64(it) }
-        var image = "NULL"
-        if (base64Image != null) {
-            image = base64Image
+        return try {
+            val (userName, userImage) = userCacheManager.getUserDisplayInfo(userId)
+            UserInformation(userId, userName, userImage, "")
+        } catch (e: Exception) {
+            UserInformation(userId, "未知用户", "NULL", "")
         }
-        var inf = UserInformation(userId, "未知用户", image, "")
-        userCache[userId] ?: run {
-            val user = SBClient.fetchUser(userId)
-            if (user != null) {
-                inf = UserInformation(
-                    userId,
-                    user.name,
-                    user.image,
-                    ""
-                )
-            }
-        }
-        return inf
     }
 
     private fun loadRoomMessages(roomId: String) {

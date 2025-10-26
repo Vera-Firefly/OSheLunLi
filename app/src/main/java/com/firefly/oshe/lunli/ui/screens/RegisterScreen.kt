@@ -18,7 +18,6 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 
 import com.firefly.oshe.lunli.data.UserData
-import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
@@ -26,8 +25,11 @@ import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.utils.ImageUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-class RegistScreen(
+class RegisterScreen(
     context: Context,
     private val onRegisterSuccess: (String, String, String, String) -> Unit,
     private val onCancelRegister: () -> Unit
@@ -93,28 +95,15 @@ class RegistScreen(
     }
 
     private fun checkUDFromClient(UserName: String, UserId: String, UserPWD: String) {
-        client = Client(context)
-        val userData = UserData(
-            userId = UserId,
-            userName = UserName,
-            password = UserPWD
-        )
-        val userMap = mapOf(UserId to userData)
-        val message = try {
-            Gson().toJson(userMap)
-        } catch (e: Exception) {
-            Log.e("RegistScreen", "JSON 转换失败", e)
-            null
-        }
         val progressDialog: AlertDialog = MaterialAlertDialogBuilder(context)
-                .setView(LinearLayout(context).apply {
+            .setView(LinearLayout(context).apply {
                 orientation = HORIZONTAL
                 gravity = Gravity.CENTER
                 setPadding(32.dp, 32.dp, 32.dp, 32.dp)
 
                 addView(ProgressBar(context).apply {
                     layoutParams = LayoutParams(
-                        WRAP_CONTENT, 
+                        WRAP_CONTENT,
                         WRAP_CONTENT
                     ).apply {
                         marginEnd = 16.dp
@@ -122,7 +111,60 @@ class RegistScreen(
                 })
 
                 addView(TextView(context).apply {
-                    text = "正在为您创建, 请稍等..."
+                    text = "正在检查用户ID..."
+                    textSize = 16f
+                    setTextColor(ContextCompat.getColor(context, R.color.tan))
+                })
+            })
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val existingUser = SBClient.fetchUser(UserId)
+
+                (context as? Activity)?.runOnUiThread {
+                    progressDialog.dismiss()
+
+                    if (existingUser != null) {
+                        showError(2, "用户ID已存在")
+                        val error: String = "账户 $UserId 已存在, 请勿重复创建"
+                        Tools().ShowToast(context, error)
+                    } else {
+                        createUDFromClient(UserName, UserId, UserPWD, progressDialog)
+                    }
+                }
+            } catch (e: Exception) {
+                (context as? Activity)?.runOnUiThread {
+                    progressDialog.dismiss()
+                    Tools().ShowToast(context, "失败, 正在进行降级处理")
+                    fallbackToClientCheck(UserName, UserId, UserPWD)
+                }
+            }
+        }
+    }
+
+    private fun fallbackToClientCheck(UserName: String, UserId: String, UserPWD: String) {
+        client = Client(context)
+
+        val progressDialog: AlertDialog = MaterialAlertDialogBuilder(context)
+            .setView(LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(32.dp, 32.dp, 32.dp, 32.dp)
+
+                addView(ProgressBar(context).apply {
+                    layoutParams = LayoutParams(
+                        WRAP_CONTENT,
+                        WRAP_CONTENT
+                    ).apply {
+                        marginEnd = 16.dp
+                    }
+                })
+
+                addView(TextView(context).apply {
+                    text = "正在检查用户ID..."
                     textSize = 16f
                     setTextColor(ContextCompat.getColor(context, R.color.tan))
                 })
@@ -137,20 +179,34 @@ class RegistScreen(
                     (context as? Activity)?.runOnUiThread {
                         progressDialog.dismiss()
                         showError(2, "用户ID已存在")
-                        val error: String = "账户 " + UserId + " 已存在, 请勿重复创建"
+                        val error: String = "账户 $UserId 已存在, 请勿重复创建"
                         Tools().ShowToast(context, error)
                     }
                 }
 
                 override fun onFailure(error: String) {
                     (context as? Activity)?.runOnUiThread {
-                        createUDFromClient(UserName, UserId, UserPWD, message, progressDialog)
+                        createUDFromClient(UserName, UserId, UserPWD, progressDialog)
                     }
                 }
             })
     }
 
-    private fun createUDFromClient(UserName: String, UserId: String, UserPWD: String, message: String?, progressDialog: AlertDialog) {
+    private fun createUDFromClient(UserName: String, UserId: String, UserPWD: String, progressDialog: AlertDialog) {
+        client = Client(context)
+        val userData = UserData(
+            userId = UserId,
+            userName = UserName,
+            password = UserPWD
+        )
+        val userMap = mapOf(UserId to userData)
+        val message = try {
+            Gson().toJson(userMap)
+        } catch (e: Exception) {
+            Log.e("RegistScreen", "JSON 转换失败", e)
+            null
+        }
+
         client.uploadData("UserData", UserId, message,
             object : Client.ResultCallback {
                 override fun onSuccess(content: String) {
@@ -159,6 +215,7 @@ class RegistScreen(
                         val drawable = context.getDrawable(R.drawable.user)
                         val image = drawable?.let { ImageUtils.drawableToBase64(it) }
                         if (image != null) {
+                            // 同时在 SBClient 创建用户（UID, Name, Image）
                             SBClient.createUser(
                                 UserId,
                                 UserName,
