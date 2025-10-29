@@ -24,6 +24,7 @@ import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.utils.ImageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,10 @@ class RegisterScreen(
     private lateinit var etUserId: TextInputLayout
     private lateinit var etPassword: TextInputLayout
 
+    private val interaction by lazy {
+        Interaction(context)
+    }
+
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER
@@ -55,22 +60,22 @@ class RegisterScreen(
             }
         }
 
-        etUserName = createEditText("用户名").apply {
+        etUserName = interaction.createEditText("用户名").apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
-        etUserId = createEditText("用户ID") {
+        etUserId = interaction.createEditText("用户ID") {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_NORMAL
         }.apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
 
-        etPassword = createEditText("设置密码") {
+        etPassword = interaction.createEditText("设置密码") {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }.apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
 
-        createButton("取消") {
+        interaction.createButton("取消", R.color.light_blue) {
             onCancelRegister()
         }.apply {
                 layoutParams = LayoutParams(0, 48.dp, 1f).apply {
@@ -78,7 +83,7 @@ class RegisterScreen(
             }
         }.also { buttonLayout.addView(it) }
 
-        createButton("注册") {
+        interaction.createButton("注册", R.color.light_blue) {
             validateInputs()?.let { (name, id, pwd) ->
                 checkUDFromClient(name, id, pwd)
             }
@@ -251,39 +256,6 @@ class RegisterScreen(
             pwd.isEmpty() -> showError(3, "密码不能为空")
             pwd.length < 8 -> showError(3, "密码至少8位")
             else -> Triple(name, id, pwd)
-        }
-    }
-
-    private fun createEditText(
-        hint: String,
-        editTextConfig: (TextInputEditText.() -> Unit)? = null
-    ): TextInputLayout {
-        return TextInputLayout(context).apply {
-            this.hint = hint
-            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
-            setBoxBackgroundColorResource(R.color.light_grey)
-            isHintEnabled = true
-            setHintTextAppearance(R.style.InputHintStyle)
-        }.also { til ->
-            val et = TextInputEditText(context).apply {
-                editTextConfig?.invoke(this)
-            }
-            til.addView(et)
-        }
-    }
-
-    private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
-        return MaterialButton(context).apply {
-            this.text = text
-            setTextColor("#2196F3".toColorInt())
-            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
-            strokeColor = ColorStateList.valueOf("#2196F3".toColorInt())
-            strokeWidth = 2.dp
-            cornerRadius = 8.dp
-            elevation = 0.dp.toFloat()
-            stateListAnimator = null
-
-            setOnClickListener { onClick() }
         }
     }
 

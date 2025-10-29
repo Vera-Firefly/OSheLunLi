@@ -34,6 +34,7 @@ import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.ui.component.Interaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +55,10 @@ class LoginScreen(
 
     private val userDataPref: UserDataPref = UserDataPref(context)
     private val userList: MutableList<String> = userDataPref.getAllUsers().keys.toMutableList()
+
+    private val interaction by lazy {
+        Interaction(context)
+    }
 
     init {
         orientation = VERTICAL
@@ -76,14 +81,14 @@ class LoginScreen(
             }
         }
 
-        tilUserId = createEditText("用户ID") {
+        tilUserId = interaction.createEditText("用户ID") {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_NORMAL
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }.apply {
             layoutParams = LayoutParams(0, WRAP_CONTENT, 1f)
         }
 
-        tilPassword = createEditText("密码") {
+        tilPassword = interaction.createEditText("密码") {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }.apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
@@ -174,7 +179,7 @@ class LoginScreen(
             }
         }
 
-        createButton("注册") {
+        interaction.createButton("注册", R.color.light_blue) {
             onRegisterClick()
         }.apply {
             layoutParams = LayoutParams(0, 48.dp, 1f).apply {
@@ -182,7 +187,7 @@ class LoginScreen(
             }
         }.also { buttonLayout.addView(it) }
 
-        createButton("登陆") {
+        interaction.createButton("登陆", R.color.light_blue) {
             val inputUserId = tilUserId.editText!!.text.toString()
             val inputPassword = tilPassword.editText!!.text.toString()
 
@@ -317,40 +322,6 @@ class LoginScreen(
                     callback("NULL")
                 }
             }
-        }
-    }
-
-    private fun createButton(text: String, onClick: () -> Unit): MaterialButton {
-        return MaterialButton(context).apply {
-            this.text = text
-            setTextColor("#2196F3".toColorInt())
-            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
-            strokeColor = ColorStateList.valueOf("#2196F3".toColorInt())
-            strokeWidth = 2.dp
-            cornerRadius = 8.dp
-            elevation = 0.dp.toFloat()
-            stateListAnimator = null
-
-            setOnClickListener { onClick() }
-            layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
-        }
-    }
-
-    private fun createEditText(
-        hint: String,
-        editTextConfig: (TextInputEditText.() -> Unit)? = null
-    ): TextInputLayout {
-        return TextInputLayout(context).apply {
-            this.hint = hint
-            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
-            setBoxBackgroundColorResource(R.color.light_grey)
-            isHintEnabled = true
-            setHintTextAppearance(R.style.InputHintStyle)
-        }.also { til ->
-            val et = TextInputEditText(context).apply {
-                editTextConfig?.invoke(this)
-            }
-            til.addView(et)
         }
     }
 }

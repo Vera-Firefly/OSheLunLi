@@ -41,6 +41,7 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.dp
+import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.android.material.button.MaterialButton
@@ -71,6 +72,10 @@ class HomePage(
     }
     private val userMessageCacheManager by lazy {
         MessageCacheManager(context, userData.userId)
+    }
+
+    private val interaction by lazy {
+        Interaction(context)
     }
 
     fun interface onSignOutListener {
@@ -187,33 +192,33 @@ class HomePage(
                 }
             }
 
-            createButton("修改密码", R.color.gray) {
+            interaction.createButton("修改密码", R.color.gray) {
                 onEditPasswordDialog()
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
-            createButton("清除缓存(当前账户)", R.color.gray) {
+            interaction.createButton("清除缓存(当前账户)", R.color.gray) {
                 userCacheManager.clearUserCache(userData.userId)
                 userMessageCacheManager.clearAllMessagesCache()
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
-            createButton("清除缓存", R.color.light_blue) {
+            interaction.createButton("清除缓存", R.color.light_blue) {
                 userCacheManager.clearAllCache()
                 userMessageCacheManager.clearAllMessagesCache()
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
-            createButton("注销账户", R.color.red) {
+            interaction.createButton("注销账户", R.color.red) {
                 onLogOutUserDialog()
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
-             createButton("退出登录", R.color.red) {
+            interaction.createButton("退出登录", R.color.red) {
                  signOutListener?.onSignOut()
              }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
@@ -673,22 +678,6 @@ class HomePage(
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 16f
             setStroke(2.dp, "#30000000".toColorInt())
-        }
-    }
-
-    private fun createButton(text: String, color: Int, onClick: () -> Unit): MaterialButton {
-        return MaterialButton(context).apply {
-            this.text = text
-            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, color)))
-            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
-            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, color))
-            strokeWidth = 2.dp
-            cornerRadius = 8.dp
-            elevation = 0.dp.toFloat()
-            stateListAnimator = null
-
-            setOnClickListener { onClick() }
-            layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
         }
     }
 

@@ -1,11 +1,15 @@
 package com.firefly.oshe.lunli
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -38,11 +42,17 @@ class MainActivity : Activity() {
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
     private lateinit var imagePicker: ImagePicker
-    private var currentUser = UserData()
+    private lateinit var backgroundManager: BackgroundManager
+
 
     private val REQUEST_CODE = 12
     private val REQUEST_CODE_PERMISSION = 0x00099
 
+
+    private var currentUser = UserData()
+    private var colorAnimator: ValueAnimator? = null
+
+    private var isBackgroundAnimated = false
     private var hasAllFilesPermission = false
     private var isNoticedAllFilesPermissionMissing = false
 
@@ -55,6 +65,10 @@ class MainActivity : Activity() {
 
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
+
+        backgroundManager = BackgroundManager(this)
+        initBackgroundManager()
+
         client = Client(this)
         userDataPref = UserDataPref(this)
 
@@ -97,6 +111,26 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            hasAllFilesPermission = Environment.isExternalStorageManager()
+            if (!hasAllFilesPermission && !isNoticedAllFilesPermissionMissing) {
+                Tools().ShowToast(this, "拒绝授权将导致部分功能无法正常工作")
+                isNoticedAllFilesPermissionMissing = true
+                checkPermission()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
+
     private fun showPermissionDialog() {
         MaterialAlertDialogBuilder(this)
             .setTitle("权限请求")
@@ -135,22 +169,6 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            hasAllFilesPermission = Environment.isExternalStorageManager()
-            if (!hasAllFilesPermission && !isNoticedAllFilesPermissionMissing) {
-                Tools().ShowToast(this, "拒绝授权将导致部分功能无法正常工作")
-                isNoticedAllFilesPermissionMissing = true
-                checkPermission()
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-    }
-
     fun startImageSelection() {
         imagePicker.pickImage { uri ->
             if (uri != null) {
@@ -168,8 +186,92 @@ class MainActivity : Activity() {
         imagePicker.handleActivityResult(requestCode, resultCode, data)
     }
 
+    private fun initBackgroundManager() {
+        backgroundManager = BackgroundManager(this).apply {
+            setBackgroundChangeListener(object : BackgroundManager.OnBackgroundChangeListener {
+                override fun onBackgroundChanged(type: BackgroundManager.BackgroundType) {
+                    when (type) {
+                        BackgroundManager.BackgroundType.GRADIENT_BEIGE -> {
+                            startBackgroundAnimation()
+                        }
+                        BackgroundManager.BackgroundType.CUSTOM_IMAGE -> {
+                            stopBackgroundAnimation()
+                        }
+                        BackgroundManager.BackgroundType.NONE -> {
+                            stopBackgroundAnimation()
+                        }
+                    }
+                }
+            })
+
+            setBackground(container, BackgroundManager.BackgroundType.GRADIENT_BEIGE)
+        }
+    }
+
+    fun switchToCustomBackground(drawable: android.graphics.drawable.Drawable) {
+        backgroundManager.setCustomImageBackground(container, drawable)
+    }
+
+    fun switchToCustomBackground(bitmap: android.graphics.Bitmap) {
+        backgroundManager.setCustomImageBackground(container, bitmap)
+    }
+
+    fun switchToGradientBackground() {
+        backgroundManager.restoreDefaultBackground(container)
+    }
+
+    fun clearBackground() {
+        backgroundManager.clearBackground(container)
+    }
+
+    // 背景动画控制
+    private fun startBackgroundAnimation() {
+        isBackgroundAnimated = true
+        colorAnimator?.cancel()
+
+        colorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 10000
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+
+            addUpdateListener { animator ->
+                val progress = animator.animatedValue as Float
+                updateBackgroundColor(progress)
+            }
+
+            start()
+        }
+    }
+
+    private fun stopBackgroundAnimation() {
+        isBackgroundAnimated = false
+        colorAnimator?.cancel()
+    }
+
+    private fun updateBackgroundColor(progress: Float) {
+        val nearWhite = Color.parseColor("#e8dcbf")
+        val lightWarmBeige = Color.parseColor("#f1e8d5")
+        val warmBeige = Color.parseColor("#f8f4e9")
+
+        val currentColor = ColorUtils.blendColors(nearWhite, warmBeige, progress)
+
+        val gradientDrawable = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(
+                currentColor,
+                ColorUtils.blendColors(nearWhite, lightWarmBeige, progress),
+                ColorUtils.blendColors(lightWarmBeige, warmBeige, progress)
+            )
+        )
+
+        backgroundManager.updateCurrentBackground(gradientDrawable)
+    }
+
     private fun switchScreen(newScreen: View, animationType: Int = 1) {
         val oldScreen = currentScreen
+
+        // 设置主要视图透明背景, 防止覆盖应用背景
+        newScreen.setBackgroundColor(Color.TRANSPARENT)
 
         // 设置新屏幕初始位置（根据动画方向）
         when (animationType) {
@@ -309,6 +411,16 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    object ColorUtils {
+        fun blendColors(color1: Int, color2: Int, ratio: Float): Int {
+            val inverseRatio = 1 - ratio
+            val r = (Color.red(color1) * inverseRatio + Color.red(color2) * ratio).toInt()
+            val g = (Color.green(color1) * inverseRatio + Color.green(color2) * ratio).toInt()
+            val b = (Color.blue(color1) * inverseRatio + Color.blue(color2) * ratio).toInt()
+            return Color.rgb(r, g, b)
+        }
     }
 
 }

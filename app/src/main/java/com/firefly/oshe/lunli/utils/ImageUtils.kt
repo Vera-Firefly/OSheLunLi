@@ -123,6 +123,16 @@ object ImageUtils {
         }
     }
 
+    fun base64FromDrawable(drawable: Drawable): String {
+        return if (drawable is BitmapDrawable) {
+            bitmapToBase64(drawable.bitmap)
+        } else {
+            val bitmap = bitmapFromDrawable(drawable)
+            val base64 = bitmapToBase64(bitmap)
+            base64
+        }
+    }
+
     /**
      * 缩放Bitmap
      */
