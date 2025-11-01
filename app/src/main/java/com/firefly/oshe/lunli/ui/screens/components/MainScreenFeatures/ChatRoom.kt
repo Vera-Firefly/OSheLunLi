@@ -32,6 +32,7 @@ import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -676,6 +677,8 @@ class ChatRoom(
 
     private inner class ChatAdapter : BaseChatAdapter() {
         private val messages = mutableListOf<Message>()
+        // 注意: 禁止打开这个base64!!!!!!!!!!!! 否则后果很严重!!!!!!!!!!!!!!
+        private val base64 = Ciallo().ciallo
         private val systemMessages = listOf(
             Message(
                 "1",
@@ -687,7 +690,7 @@ class ChatRoom(
                     - 支持**粗体**和*斜体*
                     - 支持[链接](https://example.com)
                     - 支持图片显示(需要图床)
-                    ![](https://youke1.picui.cn/s1/2025/08/06/6893621c91508.png)
+                    ![]($base64)
                     - 支持表格
                     ### 表格示例:
                     | A | B |

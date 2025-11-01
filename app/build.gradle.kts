@@ -39,7 +39,7 @@ configure<StringFogExtension> {
 
 android {
     namespace = appPackageName
-    compileSdk = 34
+    compileSdk = 35
 
     signingConfigs {
         create("releaseBuild") {
@@ -59,7 +59,7 @@ android {
 
     defaultConfig {
         applicationId = appPackageName
-        minSdk = 28
+        minSdk = 29
         versionCode = 104
         versionName = "1.0.4-devel"
         

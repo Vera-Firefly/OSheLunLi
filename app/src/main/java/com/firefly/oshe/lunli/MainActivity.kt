@@ -249,9 +249,9 @@ class MainActivity : Activity() {
     }
 
     private fun updateBackgroundColor(progress: Float) {
-        val nearWhite = Color.parseColor("#e8dcbf")
-        val lightWarmBeige = Color.parseColor("#f1e8d5")
-        val warmBeige = Color.parseColor("#f8f4e9")
+        val nearWhite = Color.parseColor("#f8f6f2")
+        val lightWarmBeige = Color.parseColor("#fbfaf8")
+        val warmBeige = Color.parseColor("#fefefe")
 
         val currentColor = ColorUtils.blendColors(nearWhite, warmBeige, progress)
 

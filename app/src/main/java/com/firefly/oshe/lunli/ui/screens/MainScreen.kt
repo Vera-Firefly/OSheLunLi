@@ -1,8 +1,10 @@
 package com.firefly.oshe.lunli.ui.screens
 
 import android.content.Context
+import android.graphics.Color
 import android.view.*
 import android.view.ViewGroup.LayoutParams.*
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.*
 import androidx.core.content.ContextCompat
 import com.google.android.material.imageview.ShapeableImageView
@@ -34,6 +36,8 @@ class MainScreen(
     private lateinit var cePageContent: Community
     private lateinit var homePageContent: HomePage
     private var selectedTabIndex = 0
+    private var previousTabIndex = 0
+    private var currentTabView: View? = null
 
     private var userInformation = UserInformationPref(context).getInformation(userData.userId)
 
@@ -72,8 +76,12 @@ class MainScreen(
         removeAllViews()
         addView(createTopBar())
         addView(createMainView())
+        addView(createDivider())
         createEndBar()
         updateEndBarItems()
+
+        currentTabView = chatRoom
+        mainView.addView(currentTabView)
     }
 
     private fun setupChatRoom() {
@@ -143,7 +151,7 @@ class MainScreen(
     private fun createTopBar(): LinearLayout {
         topBar = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, 40.dp)
-            setBackgroundColor(ContextCompat.getColor(context, R.color.tan))
+            setBackgroundColor(ContextCompat.getColor(context, R.color.white))
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(8.dp, 0, 8.dp, 0)
@@ -152,6 +160,13 @@ class MainScreen(
             addBackToMain()
         }
         return topBar
+    }
+
+    private fun createDivider(): View {
+        return View(context).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, 1.dp)
+            setBackgroundColor(Color.LTGRAY)
+        }
     }
 
     private fun LinearLayout.addUserAvatar() {
@@ -278,7 +293,6 @@ class MainScreen(
 
             addView(chatRoomContent.createView())
         }
-        if (selectedTabIndex == 0) addView(chatRoom)
     }
 
     private fun LinearLayout.onCommunity() {
@@ -288,7 +302,6 @@ class MainScreen(
 
             addView(cePageContent.createView())
         }
-        if (selectedTabIndex == 1) addView(cePage)
     }
 
     private fun LinearLayout.onHomePage() {
@@ -298,14 +311,13 @@ class MainScreen(
 
             addView(homePageContent.createView())
         }
-        if (selectedTabIndex == 2) addView(homePage)
     }
 
 
     private fun LinearLayout.createEndBar() {
         endBar = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, 40.dp)
-            setBackgroundColor(ContextCompat.getColor(context, R.color.tan))
+            setBackgroundColor(ContextCompat.getColor(context, R.color.white))
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(8.dp, 0, 8.dp, 0)
@@ -320,44 +332,33 @@ class MainScreen(
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
 
-            addView(createEndBarItem(
-                iconRes = R.drawable.comment,
-                text = "聊天室",
-                index = 0,
-                onClick = { 
-                    selectedTabIndex = 0
+            createEndBarItem(R.drawable.comment, "聊天室", 0) {
+                if (previousTabIndex != 0) {
                     onUserAvatar = true
                     onBackToMain = false
                     updateEndBarItems()
                     updateBarState()
                 }
-            ))
+            }.also { addView(it) }
 
-            addView(createEndBarItem(
-                iconRes = R.drawable.community,
-                text = "社区喵",
-                index = 1,
-                onClick = { 
-                    selectedTabIndex = 1
+
+            createEndBarItem(R.drawable.community, "社区喵", 1) {
+                if (previousTabIndex != 1) {
                     onUserAvatar = false
                     onBackToMain = true
                     updateEndBarItems()
                     updateBarState()
                 }
-            ))
+            }.also { addView(it) }
             
-            addView(createEndBarItem(
-                iconRes = R.drawable.user,
-                text = "主页喵",
-                index = 2,
-                onClick = { 
-                    selectedTabIndex = 2
+            createEndBarItem(R.drawable.user, "主页喵", 2) {
+                if (previousTabIndex != 2) {
                     onUserAvatar = false
                     onBackToMain = true
                     updateEndBarItems()
                     updateBarState()
                 }
-            ))
+            }.also { addView(it) }
         }
         addView(endBarContainer)
     }
@@ -367,7 +368,11 @@ class MainScreen(
             layoutParams = LayoutParams(0, MATCH_PARENT, 1f)
             orientation = VERTICAL
             gravity = Gravity.CENTER
-            setOnClickListener { onClick() }
+            setOnClickListener {
+                previousTabIndex = selectedTabIndex
+                selectedTabIndex = index
+                onClick()
+            }
             tag = "tab_$index" // 为每个项设置唯一tag
             
             // 图标
@@ -394,7 +399,41 @@ class MainScreen(
             }
         }
     }
-    
+
+    private fun performSlideTransition(oldView: View?, newView: View?) {
+        if (newView == null) return
+
+        val slideDirection = if (selectedTabIndex > previousTabIndex) 1 else -1
+
+        mainView.removeAllViews()
+
+        newView.translationX = (mainView.width * slideDirection).toFloat()
+        mainView.addView(newView)
+
+        newView.animate()
+            .translationX(0f)
+            .setDuration(300)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+
+        oldView?.let { old ->
+            mainView.addView(old)
+
+            val totalDistance = mainView.width.toFloat()
+
+            old.animate()
+                .translationX(-totalDistance * slideDirection)
+                .setDuration(300)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction {
+                    mainView.removeView(old)
+                }
+                .start()
+        }
+
+        currentTabView = newView
+    }
+
     private fun updateEndBarItems() {
         val container = endBar?.getChildAt(0) as? LinearLayout ?: return
     
@@ -407,8 +446,8 @@ class MainScreen(
             val text = item.findViewWithTag<MaterialTextView>("text_$i")
         
             // 更新选中状态
-            val selectedColor = ContextCompat.getColor(context, R.color.white)
-            val normalColor = ContextCompat.getColor(context, R.color.black)
+            val selectedColor = ContextCompat.getColor(context, R.color.tan)
+            val normalColor = ContextCompat.getColor(context, R.color.gray)
             
             icon?.setColorFilter(if (isSelected) selectedColor else normalColor)
             text?.setTextColor(if (isSelected) selectedColor else normalColor)
@@ -443,42 +482,14 @@ class MainScreen(
             backToMain?.visibility = VISIBLE
         }
 
-        when (selectedTabIndex) {
-            // 聊天室
-            0 -> {
-                homePage?.let { if (it.parent != null) mainView.removeView(it) }
-                cePage?.let { if (it.parent != null) mainView.removeView(it) }
-                
-                if (chatRoom?.parent == null) {
-                    chatRoom?.let { mainView.addView(it) }
-                }
-                chatRoom?.visibility = VISIBLE
-            }
-
-            // 社区
-            1 -> {
-                homePage?.let { if (it.parent != null) mainView.removeView(it) }
-                chatRoom?.let { if (it.parent != null) mainView.removeView(it) }
-            
-                // 添加或显示设置页
-                if (cePage?.parent == null) {
-                    cePage?.let { mainView.addView(it) }
-                }
-                cePage?.visibility = VISIBLE
-            }
-
-            // 主页
-            2 -> {
-                chatRoom?.let { if (it.parent != null) mainView.removeView(it) }
-                cePage?.let { if (it.parent != null) mainView.removeView(it) }
-
-                // 添加或显示用户页面
-                if (homePage?.parent == null) {
-                    homePage?.let { mainView.addView(it) }
-                }
-                homePage?.visibility = VISIBLE
-            }
+        val oldTabView = currentTabView
+        val newTabView = when (selectedTabIndex) {
+            0 -> chatRoom
+            1 -> cePage
+            2 -> homePage
+            else -> chatRoom
         }
 
+        performSlideTransition(oldTabView, newTabView)
     }
 }

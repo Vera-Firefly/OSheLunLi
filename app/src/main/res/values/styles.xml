@@ -3,20 +3,17 @@
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:forceDarkAllowed">false</item>
         <!-- 状态栏配置 -->
-        <item name="android:statusBarColor">@color/tan</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         
         <!-- 导航栏配置 -->
-        <item name="android:navigationBarColor">@color/tan</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightNavigationBar">true</item>
         
         <!-- 主题色 -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
-        
-        <!-- 背景 -->
-        <!-- <item name="android:windowBackground">@drawable/app_background</item> -->
 
         <!-- 对话框配置 -->
         <item name="materialAlertDialogTheme">@style/AppAlertDialogTheme</item>

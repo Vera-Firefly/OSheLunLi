@@ -85,9 +85,9 @@ class BackgroundManager(private val context: Context) {
             val gradientDrawable = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(
-                    Color.parseColor("#e8dcbf"),
-                    Color.parseColor("#f1e8d5"),
-                    Color.parseColor("#f8f4e9")
+                    Color.parseColor("#f8f6f2"),
+                    Color.parseColor("#fbfaf8"),
+                    Color.parseColor("#fefefe")
                 )
             )
             gradientDrawable.gradientType = GradientDrawable.LINEAR_GRADIENT

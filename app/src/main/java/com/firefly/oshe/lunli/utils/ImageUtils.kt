@@ -314,6 +314,31 @@ object ImageUtils {
         } ?: ""
     }
 
+    fun bitmapToMarkdownBase64(
+        bitmap: Bitmap,
+        format: Bitmap.CompressFormat = Bitmap.CompressFormat.PNG,
+        quality: Int = 80
+    ): String {
+        return try {
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(format, quality, outputStream)
+            val imageBytes = outputStream.toByteArray()
+            val base64 = Base64.encodeToString(imageBytes, Base64.DEFAULT)
+
+            val mimeType = when (format) {
+                Bitmap.CompressFormat.JPEG -> "image/jpeg"
+                Bitmap.CompressFormat.PNG -> "image/png"
+                Bitmap.CompressFormat.WEBP -> "image/webp"
+                else -> "image/jpeg"
+            }
+
+            "data:$mimeType;base64,$base64"
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
+    }
+
     /**
      * 提取纯净的Base64字符串（移除前缀）
      */
