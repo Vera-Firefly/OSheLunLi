@@ -13,6 +13,7 @@ import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
@@ -34,6 +35,7 @@ import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
+import io.ktor.http.ContentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -675,6 +677,12 @@ class ChatRoom(
         abstract fun addMessage(message: Message)
     }
 
+    private enum class ContentType {
+        IMAGE_BASE64,
+        IMAGE_URL,
+        TEXT
+    }
+
     private inner class ChatAdapter : BaseChatAdapter() {
         private val messages = mutableListOf<Message>()
         // 注意: 禁止打开这个base64!!!!!!!!!!!! 否则后果很严重!!!!!!!!!!!!!!
@@ -731,6 +739,116 @@ class ChatRoom(
         }
 
         fun getMessages(): List<Message> = messages.toList()
+
+        private fun detectContentType(content: String): ContentType {
+            return when {
+                isPrefixedBase64Image(content) -> ContentType.IMAGE_BASE64
+                isPureBase64Image(content) -> ContentType.IMAGE_BASE64
+                isImageUrl(content) -> ContentType.IMAGE_URL
+                else -> ContentType.TEXT
+            }
+        }
+
+        private fun isPureBase64Image(content: String): Boolean {
+            val trimmedContent = content.trim()
+
+            if (trimmedContent.length < 100) return false
+
+            val isJpeg = trimmedContent.startsWith("/9j/")
+            val isPng = trimmedContent.startsWith("iVBORw0KGgo")
+            val isGif = trimmedContent.startsWith("R0lGOD")
+            val isWebP = trimmedContent.startsWith("UklGR")
+
+            val base64Regex = "^[A-Za-z0-9+/]*={0,2}$".toRegex()
+            val isValidBase64 = base64Regex.matches(trimmedContent) &&
+                    trimmedContent.length % 4 == 0
+
+            return (isJpeg || isPng || isGif || isWebP) && isValidBase64
+        }
+
+        private fun isPrefixedBase64Image(content: String): Boolean {
+            return content.startsWith("data:image/") &&
+                    content.contains("base64,") &&
+                    content.length > 100
+        }
+
+        private fun isImageUrl(content: String): Boolean {
+            val trimmedContent = content.trim()
+            return (trimmedContent.startsWith("http://") || trimmedContent.startsWith("https://")) &&
+                    (trimmedContent.endsWith(".jpg") ||
+                            trimmedContent.endsWith(".jpeg") ||
+                            trimmedContent.endsWith(".png") ||
+                            trimmedContent.endsWith(".gif") ||
+                            trimmedContent.endsWith(".webp") ||
+                            trimmedContent.contains(".jpg?") ||
+                            trimmedContent.contains(".jpeg?") ||
+                            trimmedContent.contains(".png?") ||
+                            trimmedContent.contains(".gif?"))
+        }
+
+        private fun renderBase64Image(container: FrameLayout, content: String) {
+            try {
+                val bitmap = ImageUtils.base64ToBitmap(content)
+
+                val imageView = ShapeableImageView(container.context).apply {
+                    layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    setImageBitmap(bitmap)
+                    adjustViewBounds = true
+
+                    setOnClickListener {
+                        // TODO
+                    }
+                }
+
+                container.addView(imageView)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                renderText(container, "[图片加载失败] $content")
+            }
+        }
+
+        private fun renderImageUrl(container: FrameLayout, imageUrl: String) {
+            val imageView = ShapeableImageView(container.context).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                adjustViewBounds = true
+
+                // 使用 Glide 加载网络图片
+                Glide.with(context)
+                    .load(imageUrl)
+                    .into(this)
+
+                setOnClickListener {
+                    // TODO
+                }
+            }
+
+            container.addView(imageView)
+        }
+
+        private fun renderText(container: FrameLayout, content: String) {
+            val textView = TextView(container.context).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+                movementMethod = LinkMovementMethod.getInstance()
+
+                setTextColor(Color.BLACK)
+                textSize = 14f
+            }
+
+            try {
+                // 尝试渲染 Markdown
+                MarkdownRenderer.render(textView, content.replace("\n", "  \n"))
+            } catch (e: IllegalStateException) {
+                // 如果 Markdown 渲染失败, 降级为普通文本
+                textView.text = content
+            } catch (e: Exception) {
+                // 其他异常也降级为普通文本
+                textView.text = content
+            }
+
+            container.addView(textView)
+        }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             // 根布局 横向
@@ -793,28 +911,33 @@ class ChatRoom(
 
             // 设置数据
             senderName.text = message.sender
-            avatar.setImageResource(android.R.drawable.ic_menu_report_image)
-            if (message.sender == "系统") {
-                avatar.setImageResource(android.R.drawable.ic_menu_info_details)
-            } else if (message.senderImage != "NULL") {
-                val image = ImageUtils.base64ToBitmap(message.senderImage)
-                avatar.setImageBitmap(image)
+            when {
+                message.sender == "系统" && message.id == "1" -> {
+                    avatar.setImageResource(android.R.drawable.ic_menu_info_details)
+                }
+                message.senderImage != "NULL" -> {
+                    val image = ImageUtils.base64ToBitmap(message.senderImage)
+                    avatar.setImageBitmap(image)
+                }
+                else -> {
+                    avatar.setImageResource(android.R.drawable.ic_menu_report_image)
+                }
             }
 
             // 清空旧内容并渲染新消息
             contentContainer.removeAllViews()
-            val textView = TextView(rootView.context).apply {
-                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
-                movementMethod = LinkMovementMethod.getInstance() // 支持链接点击
-            }
 
-            try {
-                MarkdownRenderer.render(textView, (message.content).replace("\n", "  \n"))
-            } catch (e: IllegalStateException) {
-                textView.text = message.content // 降级为普通文本
+            when (detectContentType(message.content)) {
+                ContentType.IMAGE_BASE64 -> {
+                    renderBase64Image(contentContainer, message.content)
+                }
+                ChatRoom.ContentType.IMAGE_URL -> {
+                    renderImageUrl(contentContainer, message.content)
+                }
+                else -> {
+                    renderText(contentContainer, message.content)
+                }
             }
-
-            contentContainer.addView(textView)
         }
 
         override fun getItemCount() = messages.size
