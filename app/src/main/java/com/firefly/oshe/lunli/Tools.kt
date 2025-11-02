@@ -3,12 +3,13 @@ package com.firefly.oshe.lunli
 import android.content.Context
 import android.widget.Toast
 
-class Tools() {
+object Tools {
     private var previousToast: Toast? = null
 
-    fun ShowToast(context: Context, message: String) {
+    fun Context.ShowToast(message: String) {
         previousToast?.cancel()
-        previousToast = Toast.makeText(context, message, Toast.LENGTH_SHORT)
-        previousToast?.show()
+        previousToast = Toast.makeText(this, message, Toast.LENGTH_SHORT).apply {
+            show()
+        }
     }
 }

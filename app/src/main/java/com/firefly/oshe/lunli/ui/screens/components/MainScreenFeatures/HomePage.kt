@@ -31,6 +31,7 @@ import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
 import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.client.Token
@@ -66,7 +67,6 @@ class HomePage(
     private var homePage: LinearLayout? = null
     private var onItemClickCount = 0
     private var lastResetTime = System.currentTimeMillis()
-    private var previousToast: Toast? = null
     private val userCacheManager by lazy {
         SeparateUserCacheManager(context)
     }
@@ -299,7 +299,7 @@ class HomePage(
                                 )
                                 updateSBClientUserMessage(inf) {
                                     if (!it) {
-                                        Tools().ShowToast(context, "头像暂时无法更新")
+                                        context.ShowToast("头像暂时无法更新")
                                     } else {
                                         setImageBitmap(image)
                                         UserInformationPref(context).deleteInformation(userData.userId)
@@ -343,10 +343,7 @@ class HomePage(
                             )
                             updateSBClientUserMessage(data_1) {
                                 if (!it) {
-                                    Tools().ShowToast(
-                                        context,
-                                        "无法连接SBClient, 请稍后尝试更改用户名",
-                                    )
+                                    context.ShowToast("无法连接SBClient, 请稍后尝试更改用户名")
                                 } else {
                                     updateClientMessage(data) {
                                         if (!it) {
@@ -358,9 +355,7 @@ class HomePage(
                                                     userInformation.userMessage
                                                 )
                                             )
-                                            Tools().ShowToast(
-                                                context, "无法连接Client, 请稍后尝试更改用户名",
-                                            )
+                                            context.ShowToast("无法连接Client, 请稍后尝试更改用户名")
                                         } else {
                                             userDataPref.deleteUser(userData.userId)
                                             userDataPref.saveUser(data)
@@ -384,7 +379,7 @@ class HomePage(
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("UID", uid)
                         clipboard.setPrimaryClip(clip)
-                        Tools().ShowToast(context, "UID已经复制到剪切板")
+                        context.ShowToast("UID已经复制到剪切板")
                     }
                     addView(this)
                 }
@@ -403,7 +398,6 @@ class HomePage(
             }.also { addView(it) }
 
             setOnClickListener {
-                previousToast?.cancel()
                 val currentTime = System.currentTimeMillis()
                 val timeZZ = currentTime - lastResetTime
                 if (timeZZ > 5000) {
@@ -430,8 +424,7 @@ class HomePage(
                     emojiArray.random()
                 }
 
-                previousToast = Toast.makeText(context, displayText, Toast.LENGTH_SHORT)
-                previousToast?.show()
+                context.ShowToast(displayText)
             }
 
         }
@@ -441,7 +434,7 @@ class HomePage(
         cropDialog.showCropDialog(bitmap, 0) { it ->
             it?.let {
                 callBack(it)
-                Tools().ShowToast(context, "DONE")
+                context.ShowToast("DONE")
             }
         }
         cropDialog.showAtLocation(mainView)
@@ -571,7 +564,7 @@ class HomePage(
                     )
                     updateClientMessage(data) {
                         if (!it) {
-                            Tools().ShowToast(context, "无法连接Client, 请稍后再试")
+                            context.ShowToast("无法连接Client, 请稍后再试")
                         } else {
                             userDataPref.deleteUser(userData.userId)
                             userDataPref.saveUser(UserData(
@@ -590,9 +583,9 @@ class HomePage(
                         }
                     }
                 } else if (oldPassword == userData.password) {
-                    Tools().ShowToast(context, "新密码与旧密码一致")
+                    context.ShowToast("新密码与旧密码一致")
                 } else {
-                    Tools().ShowToast(context, "旧密码输入错误, 请重新输入",)
+                    context.ShowToast("旧密码输入错误, 请重新输入",)
                 }
             }
             .show()
@@ -620,7 +613,7 @@ class HomePage(
                 )
                 updateClientMessage(data) {
                     if (!it) {
-                        Tools().ShowToast(context, "无法连接Client, 请稍后再试")
+                        context.ShowToast("无法连接Client, 请稍后再试")
                     } else {
                         userDataPref.deleteUser(userData.userId)
                         MaterialAlertDialogBuilder(context)

@@ -31,6 +31,7 @@ import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
@@ -250,7 +251,7 @@ class LoginScreen(
                             progressDialog.dismiss()
                             var Err: String = error
                             if (error == "UserFile") Err = "未找到该账户, 请检查输入或注册账户"
-                            Tools().ShowToast(context, Err)
+                            context.ShowToast(Err)
                         }
                     }
                 })
@@ -285,7 +286,7 @@ class LoginScreen(
                         UserInformationPref(context).deleteInformation(inputUserId)
                         getUserImage(inputUserId) {
                             if (it == "NULL") {
-                                Tools().ShowToast(context, "无法获取用户信息, 请稍后再试")
+                                context.ShowToast("无法获取用户信息, 请稍后再试")
                                 callback(false)
                             } else {
                                 val inf = UserInformation(

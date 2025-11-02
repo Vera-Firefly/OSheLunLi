@@ -27,6 +27,7 @@ import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.MarkdownRenderer
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
@@ -220,7 +221,7 @@ class ChatRoom(
                         currentRoomId?.let { roomId ->
                             SBClient.sendMessage(currentId, roomId, userData.userId, markdownText) {
                                 if (!it) {
-                                    Tools().ShowToast(context, "$currentId: 发送失败")
+                                    context.ShowToast("$currentId: 发送失败")
                                 }
                             }
                         }
@@ -372,7 +373,7 @@ class ChatRoom(
                 true
             }
             menu.add("删除Room").setOnMenuItemClickListener {
-                Tools().ShowToast(context, "单击房间以删除, 注意: 只能删除自己创建的房间, 否则你将被骗(PS: 这是AS推荐我加的一句)")
+                context.ShowToast("单击房间以删除, 注意: 只能删除自己创建的房间, 否则你将被骗(PS: 这是AS推荐我加的一句)")
                 isAddNewRoom = false
                 roomStatus?.removeAllViews()
                 roomStatus_done?.let {
@@ -453,7 +454,7 @@ class ChatRoom(
                 val roomPassword = passwordInput.text.toString()
 
                 if (title.isEmpty()) {
-                    Tools().ShowToast(context, "请输入房间标题")
+                    context.ShowToast("请输入房间标题")
                     addRoomDialog()
                     return@setPositiveButton
                 }
@@ -470,11 +471,11 @@ class ChatRoom(
                     override fun onSuccess(content: String?) {
                         addRoom(newRoom)
                         SBClient.createRoom(newRoom.id)
-                        Tools().ShowToast(context, "房间创建成功")
+                        context.ShowToast("房间创建成功")
                     }
 
                     override fun onFailure(error: String?) {
-                        Tools().ShowToast(context, "创建失败, 请重新创建")
+                        context.ShowToast("创建失败, 请重新创建")
                     }
                 })
             }
@@ -647,11 +648,11 @@ class ChatRoom(
                                         override fun onSuccess(content: String?) {
                                             rooms.remove(room)
                                             notifyItemRemoved(holder.bindingAdapterPosition)
-                                            Tools().ShowToast(context, "删除成功")
+                                            context.ShowToast("删除成功")
                                         }
 
                                         override fun onFailure(error: String?) {
-                                            Tools().ShowToast(context, "貌似删除失败了🤔, 请尝试重新删除")
+                                            context.ShowToast("貌似删除失败了🤔, 请尝试重新删除")
                                         }
                                     })
                             } else {
@@ -659,7 +660,7 @@ class ChatRoom(
                             }
                         }
                     } else {
-                        Tools().ShowToast(context, "别人的房间你删逆🐎呢")
+                        context.ShowToast("别人的房间你删逆🐎呢")
                     }
                 }
             }
@@ -946,7 +947,7 @@ class ChatRoom(
     private fun loadRooms(callback: (Boolean) -> Unit = {}) {
         client = Client(context)
         if (isLoading) {
-            Tools().ShowToast(context, "正在加载房间列表, 请稍后...")
+            context.ShowToast("正在加载房间列表, 请稍后...")
             callback(false)
         } else {
             isLoading = true
@@ -1085,10 +1086,10 @@ class ChatRoom(
                     if (password.equals(room.roomPassword)) {
                         currentRoomId = room.id
                         loadRoomMessages(room.id)
-                        Tools().ShowToast(context, "Hello!\n${userData.userName} (${userData.userId})")
+                            context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
                         callback(true)
                     } else {
-                        Tools().ShowToast(context, "错误的密码")
+                        context.ShowToast("错误的密码")
                         callback(false)
                     }
                 }
@@ -1165,11 +1166,11 @@ class ChatRoom(
                 } catch (e: Exception) {
                     if (currentRoomId == roomId) {
                         withContext(Dispatchers.Main) {
-                            Tools().ShowToast(context, "订阅消息失败: ${e.message}")
+                            context.ShowToast("订阅消息失败: ${e.message}")
                         }
                     }
                 } finally {
-                    Tools().ShowToast(context, "订阅消息结束")
+                    context.ShowToast("订阅消息结束")
                 }
             }
         }
@@ -1207,7 +1208,7 @@ class ChatRoom(
                     delay(3000L)
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Tools().ShowToast(context, "轮询消息失败: ${e.message}")
+                        context.ShowToast("轮询消息失败: ${e.message}")
                     }
                     delay(5000L)
                 }
@@ -1293,7 +1294,7 @@ class ChatRoom(
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Tools().ShowToast(context, "加载消息失败: ${e.message}")
+                context.ShowToast("加载消息失败: ${e.message}")
             }
         }
     }

@@ -12,6 +12,7 @@ import com.google.android.material.textview.MaterialTextView
 
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserInformation
@@ -141,7 +142,7 @@ class MainScreen(
                     if (image != null) {
                         userImage.setImageBitmap(image)
                     } else {
-                        Tools().ShowToast(context, "无法更新主页图像, 请重启应用或联系管理人员")
+                        context.ShowToast("无法更新主页图像, 请重启应用或联系管理人员")
                     }
                 }
             }

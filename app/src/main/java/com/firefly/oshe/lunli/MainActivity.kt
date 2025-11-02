@@ -6,9 +6,7 @@ import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -24,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
 import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
@@ -84,7 +83,7 @@ class MainActivity : Activity() {
                 }
                 if (user.hasPasswordError) {
                     showLoginScreen(0)
-                    Tools().ShowToast(this, "请重新输入密码")
+                    this.ShowToast("请重新输入密码")
                     return
                 }
             }
@@ -120,7 +119,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             hasAllFilesPermission = Environment.isExternalStorageManager()
             if (!hasAllFilesPermission && !isNoticedAllFilesPermissionMissing) {
-                Tools().ShowToast(this, "拒绝授权将导致部分功能无法正常工作")
+                this.ShowToast("拒绝授权将导致部分功能无法正常工作")
                 isNoticedAllFilesPermissionMissing = true
                 checkPermission()
             }
@@ -143,10 +142,7 @@ class MainActivity : Activity() {
             }
             .setNegativeButton("否") { _: DialogInterface?, _: Int ->
                 isNoticedAllFilesPermissionMissing = true
-                Tools().ShowToast(
-                    this,
-                    "拒绝授权将导致部分功能无法正常工作，请重启软件以授权",
-                )
+                this.ShowToast("拒绝授权将导致部分功能无法正常工作，请重启软件以授权")
             }
             .setOnKeyListener { _, keyCode, _ -> keyCode == KeyEvent.KEYCODE_BACK }
             .setCancelable(false)

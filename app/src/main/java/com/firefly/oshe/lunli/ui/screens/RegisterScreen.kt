@@ -24,6 +24,7 @@ import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import androidx.core.graphics.toColorInt
 import com.firefly.oshe.lunli.Tools
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.utils.ImageUtils
 import kotlinx.coroutines.CoroutineScope
@@ -135,7 +136,7 @@ class RegisterScreen(
                     if (existingUser != null) {
                         showError(2, "用户ID已存在")
                         val error: String = "账户 $UserId 已存在, 请勿重复创建"
-                        Tools().ShowToast(context, error)
+                        context.ShowToast(error)
                     } else {
                         createUDFromClient(UserName, UserId, UserPWD, progressDialog)
                     }
@@ -143,7 +144,7 @@ class RegisterScreen(
             } catch (e: Exception) {
                 (context as? Activity)?.runOnUiThread {
                     progressDialog.dismiss()
-                    Tools().ShowToast(context, "失败, 正在进行降级处理")
+                    context.ShowToast("失败, 正在进行降级处理")
                     fallbackToClientCheck(UserName, UserId, UserPWD)
                 }
             }
@@ -185,7 +186,7 @@ class RegisterScreen(
                         progressDialog.dismiss()
                         showError(2, "用户ID已存在")
                         val error: String = "账户 $UserId 已存在, 请勿重复创建"
-                        Tools().ShowToast(context, error)
+                        context.ShowToast(error)
                     }
                 }
 
@@ -228,7 +229,7 @@ class RegisterScreen(
                             )
                             onRegisterSuccess(UserName, UserId, UserPWD, image)
                         } else {
-                            Tools().ShowToast(context, "资源创建失败, 请联系管理人员")
+                            context.ShowToast("资源创建失败, 请联系管理人员")
                         }
                     }
                 }
@@ -236,7 +237,7 @@ class RegisterScreen(
                 override fun onFailure(error: String) {
                     (context as? Activity)?.runOnUiThread {
                         progressDialog.dismiss()
-                        Tools().ShowToast(context, error)
+                        context.ShowToast(error)
                     }
                 }
             })
@@ -260,7 +261,7 @@ class RegisterScreen(
     }
 
     private fun showError(fieldType: Int, message: String): Nothing? {
-        Tools().ShowToast(context, message)
+        context.ShowToast(message)
         when (fieldType) {
             1 -> etUserName.error = message
             2 -> etUserId.error = message
