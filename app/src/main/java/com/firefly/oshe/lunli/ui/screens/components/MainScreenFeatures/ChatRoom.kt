@@ -34,6 +34,8 @@ import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.ui.component.Interaction
+import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
 import io.ktor.http.ContentType
@@ -57,6 +59,7 @@ class ChatRoom(
 
     private lateinit var mainView: LinearLayout
     private lateinit var client: Client
+    private lateinit var cropDialog: CropDialog
 
     private var roomAdapter: BaseRoomAdapter? = null
     private var chatAdapter: BaseChatAdapter? = null
@@ -78,6 +81,11 @@ class ChatRoom(
     private val userMessageCacheManager by lazy {
         MessageCacheManager(context, userData.userId)
     }
+
+    private val interaction by lazy {
+        Interaction(context)
+    }
+
     private var messageSubscription: Job? = null
     private var currentSubscription: Job? = null
 
@@ -204,34 +212,38 @@ class ChatRoom(
                 }
 
                 setOnClickListener {
-                    val markdownText = inputEditText.text.toString()
-                    val currentId = UUID.randomUUID().toString()
-                    val inf = UserInformationPref(context).getInformation(userData.userId)
-                    var image = "NULL"
-                    inf?.userImage?.let { image = it }
-                    if (markdownText.isNotEmpty()) {
-                        addMessage(
-                            Message(
-                                currentId,
-                                userData.userName + " (" + userData.userId + ")",
-                                image,
-                                markdownText
-                            )
-                        )
-                        currentRoomId?.let { roomId ->
-                            SBClient.sendMessage(currentId, roomId, userData.userId, markdownText) {
-                                if (!it) {
-                                    context.ShowToast("$currentId: 发送失败")
-                                }
-                            }
-                        }
-                        inputEditText.text?.clear()
-                    }
+                    val message = inputEditText.text.toString()
+                    sendMessageToClient(message)
+                    inputEditText.text?.clear()
                 }
             }
 
             addView(inputEditText)
             addView(sendButton)
+        }
+    }
+
+    private fun sendMessageToClient(message: String) {
+        val currentId = UUID.randomUUID().toString()
+        val inf = UserInformationPref(context).getInformation(userData.userId)
+        var image = "NULL"
+        inf?.userImage?.let { image = it }
+        if (message.isNotEmpty()) {
+            addMessage(
+                Message(
+                    currentId,
+                    userData.userName + " (" + userData.userId + ")",
+                    image,
+                    message
+                )
+            )
+            currentRoomId?.let { roomId ->
+                SBClient.sendMessage(currentId, roomId, userData.userId, message) {
+                    if (!it) {
+                        context.ShowToast("$currentId: 发送失败")
+                    }
+                }
+            }
         }
     }
 
@@ -243,7 +255,13 @@ class ChatRoom(
 
             val buttons = listOf(
                 createImageButton(R.drawable.picture) {
-                    context.ShowToast("图片上传功能待开发中")
+                    interaction.ImageRequestCallBack("ChatRoom") { bitmap ->
+                        cropDialog = CropDialog(context)
+                        showCropDialog(bitmap) { cropBitmap ->
+                            val base64 = ImageUtils.bitmapToBase64(cropBitmap)
+                            sendMessageToClient(base64)
+                        }
+                    }
                 },
                 createImageButton(R.drawable.camera) {
                     context.ShowToast("摄像功能待开发中")
@@ -274,6 +292,15 @@ class ChatRoom(
 
             setOnClickListener { onClick() }
         }
+    }
+
+    private fun showCropDialog(bitmap: Bitmap, callBack: (Bitmap) -> Unit = {}) {
+        cropDialog.showCropDialog(bitmap) { it ->
+            it?.let {
+                callBack(it)
+            }
+        }
+        cropDialog.showAtLocation(mainView)
     }
 
     fun setRoomStatus(): LinearLayout? {
@@ -801,11 +828,7 @@ class ChatRoom(
             val isGif = trimmedContent.startsWith("R0lGOD")
             val isWebP = trimmedContent.startsWith("UklGR")
 
-            val base64Regex = "^[A-Za-z0-9+/]*={0,2}$".toRegex()
-            val isValidBase64 = base64Regex.matches(trimmedContent) &&
-                    trimmedContent.length % 4 == 0
-
-            return (isJpeg || isPng || isGif || isWebP) && isValidBase64
+            return (isJpeg || isPng || isGif || isWebP)
         }
 
         private fun isPrefixedBase64Image(content: String): Boolean {
@@ -845,8 +868,7 @@ class ChatRoom(
 
                 container.addView(imageView)
             } catch (e: Exception) {
-                e.printStackTrace()
-                renderText(container, "[图片加载失败] $content")
+                context.ShowToast("图片加载失败")
             }
         }
 

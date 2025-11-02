@@ -2,13 +2,20 @@ package com.firefly.oshe.lunli.ui.component
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.Uri
 import android.view.MotionEvent
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout.LayoutParams
 import androidx.core.content.ContextCompat
+import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
+import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
+import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.R
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.dp
+import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -102,6 +109,31 @@ class Interaction(private val context: Context) {
             }
             til.addView(et)
         }
+    }
+
+    fun ImageRequestCallBack(requester: String, callBack: (Bitmap) -> Unit = {}) {
+        ImageSelectionManager.setCallback(requester, object : SimpleImageCallback {
+            override fun onImageSelected(uri: Uri) {
+                val bitmap = ImageUtils.bitmapFromUri(context, uri)
+                bitmap?.let { callBack(it) }
+            }
+
+            override fun onSelectionCancelled() {
+                onDestroy()
+            }
+
+            override fun onSelectionFailed(error: String) {
+                context.ShowToast("图片选择失败")
+                onDestroy()
+            }
+        })
+        if (context is MainActivity) {
+            context.startImageSelection()
+        }
+    }
+
+    private fun onDestroy() {
+        ImageSelectionManager.clearCallback()
     }
 
 }

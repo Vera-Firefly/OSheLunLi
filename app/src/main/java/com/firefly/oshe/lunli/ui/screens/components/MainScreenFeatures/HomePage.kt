@@ -286,7 +286,7 @@ class HomePage(
                 }
                 setImageBitmap(icon)
                 setOnClickListener {
-                    ImageRequestCallBack { sampleBitmap ->
+                    interaction.ImageRequestCallBack("HomePage") { sampleBitmap ->
                         cropDialog = CropDialog(context)
                         sampleBitmap.let {
                             showCropDialog(it) { image ->
@@ -438,26 +438,6 @@ class HomePage(
             }
         }
         cropDialog.showAtLocation(mainView)
-    }
-
-    private fun ImageRequestCallBack(callBack: (Bitmap) -> Unit = {}) {
-        ImageSelectionManager.setCallback("HomePage", object : SimpleImageCallback {
-            override fun onImageSelected(uri: Uri) {
-                val bitmap = ImageUtils.bitmapFromUri(context, uri)
-                bitmap?.let { callBack(it) }
-            }
-
-            override fun onSelectionCancelled() {
-                onDestroy()
-            }
-
-            override fun onSelectionFailed(error: String) {
-                TODO("Not yet implemented")
-            }
-        })
-        if (context is MainActivity) {
-            context.startImageSelection()
-        }
     }
 
     private fun editMessageDialog(
@@ -672,10 +652,6 @@ class HomePage(
             cornerRadius = 16f
             setStroke(2.dp, "#30000000".toColorInt())
         }
-    }
-
-    fun onDestroy() {
-        ImageSelectionManager.clearCallback()
     }
 
 }
