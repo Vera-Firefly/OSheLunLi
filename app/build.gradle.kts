@@ -60,8 +60,8 @@ android {
     defaultConfig {
         applicationId = appPackageName
         minSdk = 29
-        versionCode = 104
-        versionName = "1.0.4-hotfix"
+        versionCode = 105
+        versionName = "1.0.5-devel"
         
         vectorDrawables { 
             useSupportLibrary = true
