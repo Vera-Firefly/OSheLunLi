@@ -438,7 +438,7 @@ class HomePage(
     }
 
     private fun showCropDialog(bitmap: Bitmap, callBack: (Bitmap) -> Unit = {}) {
-        cropDialog.showCropDialog(bitmap) { it ->
+        cropDialog.showCropDialog(bitmap, 0) { it ->
             it?.let {
                 callBack(it)
                 Tools().ShowToast(context, "DONE")

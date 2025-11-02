@@ -47,9 +47,9 @@ class CropUtils @JvmOverloads constructor(
     var onCropListener: ((Bitmap?) -> Unit)? = null
 
     enum class CropType {
-        SQUARE,      // 正方形
-        SCREEN_RATIO, // 屏幕比例
-        FULL_SCREEN   // 全屏预览
+        SQUARE,
+        SCREEN_RATIO,
+        FULL_SCREEN
     }
 
     private var currentCropType: CropType = CropType.SQUARE

@@ -26,7 +26,7 @@ class CropDialog(
     private lateinit var cropView: CropUtils
     private var onCropResult: ((Bitmap?) -> Unit)? = null
 
-    fun showCropDialog(bitmap: Bitmap, cropType: Int = 0, onCropResult: (Bitmap?) -> Unit = {}) {
+    fun showCropDialog(bitmap: Bitmap, cropType: Int = -1, onCropResult: (Bitmap?) -> Unit = {}) {
         this.onCropResult = onCropResult
         val rootView = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -36,7 +36,9 @@ class CropDialog(
         cropView = CropUtils(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
             setImage(bitmap)
-            setCropType(getCropTypeFromInt(cropType))
+            if (cropType != -1) {
+                setCropType(getCropTypeFromInt(cropType))
+            }
         }
 
         val buttonLayout = LinearLayout(context).apply {
@@ -46,8 +48,10 @@ class CropDialog(
             }
         }
 
-        val typeSelectorLayout = createCropTypeSelector()
-        rootView.addView(typeSelectorLayout)
+        if (cropType == -1) {
+            val typeSelectorLayout = createCropTypeSelector()
+            rootView.addView(typeSelectorLayout)
+        }
 
         createButton(
             "取消",
@@ -126,7 +130,6 @@ class CropDialog(
 
             setOnClickListener {
                 cropView.setCropType(getCropTypeFromInt(cropType))
-
                 updateTypeButtonStates(this, cropType)
             }
         }
