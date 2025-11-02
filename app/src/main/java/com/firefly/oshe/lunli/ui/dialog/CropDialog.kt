@@ -26,7 +26,7 @@ class CropDialog(
     private lateinit var cropView: CropUtils
     private var onCropResult: ((Bitmap?) -> Unit)? = null
 
-    fun showCropDialog(bitmap: Bitmap, onCropResult: (Bitmap?) -> Unit = {}) {
+    fun showCropDialog(bitmap: Bitmap, cropType: Int = 0, onCropResult: (Bitmap?) -> Unit = {}) {
         this.onCropResult = onCropResult
         val rootView = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -36,6 +36,7 @@ class CropDialog(
         cropView = CropUtils(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
             setImage(bitmap)
+            setCropType(getCropTypeFromInt(cropType))
         }
 
         val buttonLayout = LinearLayout(context).apply {
@@ -44,6 +45,9 @@ class CropDialog(
                 setPadding(16, 16, 16, 16)
             }
         }
+
+        val typeSelectorLayout = createCropTypeSelector()
+        rootView.addView(typeSelectorLayout)
 
         createButton(
             "取消",
@@ -69,7 +73,6 @@ class CropDialog(
             buttonLayout.addView(it)
         }
 
-
         rootView.addView(
             cropView,
             LayoutParams(
@@ -88,6 +91,73 @@ class CropDialog(
         ).apply {
             isOutsideTouchable = false
             elevation = 20f
+        }
+    }
+
+    private fun createCropTypeSelector(): LinearLayout {
+        return LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setPadding(16, 16, 16, 8)
+            }
+            gravity = CENTER
+
+            createTypeButton("正方形", 0).also { addView(it) }
+
+            createTypeButton("屏幕比例", 1).also { addView(it) }
+
+            createTypeButton("全屏预览", 2).also { addView(it) }
+        }
+    }
+
+    private fun createTypeButton(text: String, cropType: Int): MaterialButton {
+        return MaterialButton(context).apply {
+            this.text = text
+            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.light_blue)))
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.light_blue))
+            strokeWidth = 1.dp
+            cornerRadius = 6.dp
+            elevation = 0.dp.toFloat()
+            stateListAnimator = null
+            layoutParams = LayoutParams(WRAP_CONTENT, 36.dp).apply {
+                marginEnd = 8
+            }
+
+            setOnClickListener {
+                cropView.setCropType(getCropTypeFromInt(cropType))
+
+                updateTypeButtonStates(this, cropType)
+            }
+        }
+    }
+
+    private fun updateTypeButtonStates(selectedButton: MaterialButton, selectedType: Int) {
+        val parent = selectedButton.parent as? LinearLayout
+        parent?.let { layout ->
+            for (i in 0 until layout.childCount) {
+                val child = layout.getChildAt(i) as? MaterialButton
+                child?.let { button ->
+                    val isSelected = button == selectedButton
+                    val colorRes = if (isSelected) R.color.white else R.color.light_blue
+                    val bgColorRes = if (isSelected) R.color.light_blue else android.R.color.transparent
+
+                    button.setTextColor(ColorStateList.valueOf(ContextCompat.getColor(context, colorRes)))
+                    button.backgroundTintList = ColorStateList.valueOf(
+                        ContextCompat.getColor(context, bgColorRes)
+                    )
+                    button.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.light_blue))
+                }
+            }
+        }
+    }
+
+    private fun getCropTypeFromInt(cropType: Int): CropUtils.CropType {
+        return when (cropType) {
+            0 -> CropUtils.CropType.SQUARE
+            1 -> CropUtils.CropType.SCREEN_RATIO
+            2 -> CropUtils.CropType.FULL_SCREEN
+            else -> CropUtils.CropType.SQUARE
         }
     }
 

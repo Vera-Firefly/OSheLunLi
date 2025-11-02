@@ -46,11 +46,29 @@ class CropUtils @JvmOverloads constructor(
 
     var onCropListener: ((Bitmap?) -> Unit)? = null
 
+    enum class CropType {
+        SQUARE,      // 正方形
+        SCREEN_RATIO, // 屏幕比例
+        FULL_SCREEN   // 全屏预览
+    }
+
+    private var currentCropType: CropType = CropType.SQUARE
+
     init {
         scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
         gestureDetector = GestureDetector(context, GestureListener())
 
         cropPaint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
+    }
+
+    fun setCropType(type: CropType) {
+        currentCropType = type
+        setupInitialRects()
+        invalidate()
+    }
+
+    fun getCropType(): CropType {
+        return currentCropType
     }
 
     fun setImage(bitmap: Bitmap) {
@@ -76,11 +94,34 @@ class CropUtils @JvmOverloads constructor(
                 imageRect.set((viewWidth - displayWidth) / 2, 0f, (viewWidth + displayWidth) / 2, viewHeight)
             }
 
-            val cropSize = min(viewWidth, viewHeight) * 0.7f
-            val cropLeft = (viewWidth - cropSize) / 2
-            val cropTop = (viewHeight - cropSize) / 2
+            when (currentCropType) {
+                CropType.SQUARE -> {
+                    val cropSize = min(viewWidth, viewHeight) * 0.7f
+                    val cropLeft = (viewWidth - cropSize) / 2
+                    val cropTop = (viewHeight - cropSize) / 2
+                    cropRect.set(cropLeft, cropTop, cropLeft + cropSize, cropTop + cropSize)
+                }
+                CropType.SCREEN_RATIO -> {
+                    val screenRatio = viewWidth / viewHeight
+                    val cropWidth: Float
+                    val cropHeight: Float
 
-            cropRect.set(cropLeft, cropTop, cropLeft + cropSize, cropTop + cropSize)
+                    if (screenRatio > 1) {
+                        cropHeight = viewHeight * 0.7f
+                        cropWidth = cropHeight * screenRatio
+                    } else {
+                        cropWidth = viewWidth * 0.7f
+                        cropHeight = cropWidth / screenRatio
+                    }
+
+                    val cropLeft = (viewWidth - cropWidth) / 2
+                    val cropTop = (viewHeight - cropHeight) / 2
+                    cropRect.set(cropLeft, cropTop, cropLeft + cropWidth, cropTop + cropHeight)
+                }
+                CropType.FULL_SCREEN -> {
+                    cropRect.set(0f, 0f, viewWidth, viewHeight)
+                }
+            }
 
             imageScale = 1.0f
             imageTranslateX = 0f
@@ -101,14 +142,16 @@ class CropUtils @JvmOverloads constructor(
 
             canvas.restore()
 
-            canvas.drawRect(0f, 0f, width.toFloat(), cropRect.top, overlayPaint)
-            canvas.drawRect(0f, cropRect.bottom, width.toFloat(), height.toFloat(), overlayPaint)
-            canvas.drawRect(0f, cropRect.top, cropRect.left, cropRect.bottom, overlayPaint)
-            canvas.drawRect(cropRect.right, cropRect.top, width.toFloat(), cropRect.bottom, overlayPaint)
+            if (currentCropType != CropType.FULL_SCREEN) {
+                canvas.drawRect(0f, 0f, width.toFloat(), cropRect.top, overlayPaint)
+                canvas.drawRect(0f, cropRect.bottom, width.toFloat(), height.toFloat(), overlayPaint)
+                canvas.drawRect(0f, cropRect.top, cropRect.left, cropRect.bottom, overlayPaint)
+                canvas.drawRect(cropRect.right, cropRect.top, width.toFloat(), cropRect.bottom, overlayPaint)
 
-            canvas.drawRect(cropRect, cropPaint)
+                canvas.drawRect(cropRect, cropPaint)
 
-            drawCornerMarkers(canvas)
+                drawCornerMarkers(canvas)
+            }
 
             drawHintText(canvas)
         }
@@ -121,11 +164,16 @@ class CropUtils @JvmOverloads constructor(
             textAlign = Paint.Align.CENTER
         }
 
-        val text = "请使用双指缩放图片, 滑动裁剪框外部移动图片, 双击任意区域恢复到初始状态"
+        val text = when (currentCropType) {
+            CropType.FULL_SCREEN -> "全屏预览模式 - 双击恢复到初始状态"
+            else -> "请使用双指缩放图片, 滑动裁剪框外部移动图片, 双击任意区域恢复到初始状态"
+        }
         canvas.drawText(text, width / 2f, cropRect.top - 50f, textPaint)
     }
 
     private fun drawCornerMarkers(canvas: Canvas) {
+        if (currentCropType == CropType.FULL_SCREEN) return
+
         val cornerSize = 20f
 
         canvas.drawLine(cropRect.left, cropRect.top, cropRect.left + cornerSize, cropRect.top, cropPaint)
@@ -142,6 +190,12 @@ class CropUtils @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (currentCropType == CropType.FULL_SCREEN) {
+            scaleGestureDetector.onTouchEvent(event)
+            gestureDetector.onTouchEvent(event)
+            return true
+        }
+
         scaleGestureDetector.onTouchEvent(event)
         gestureDetector.onTouchEvent(event)
 
@@ -170,7 +224,7 @@ class CropUtils @JvmOverloads constructor(
                     invalidate()
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 isDragging = false
                 isResizing = false
                 isMovingImage = false
@@ -180,6 +234,9 @@ class CropUtils @JvmOverloads constructor(
     }
 
     private fun isInCornerArea(x: Float, y: Float): Boolean {
+        // 全屏模式下不支持调整大小
+        if (currentCropType == CropType.FULL_SCREEN) return false
+
         val cornerThreshold = 50f
         return (abs(x - cropRect.left) < cornerThreshold && abs(y - cropRect.top) < cornerThreshold) ||
                 (abs(x - cropRect.right) < cornerThreshold && abs(y - cropRect.top) < cornerThreshold) ||
@@ -226,17 +283,70 @@ class CropUtils @JvmOverloads constructor(
             }
         }
 
-        val size = cropRect.width()
+        if (currentCropType == CropType.SCREEN_RATIO) {
+            val screenRatio = width.toFloat() / height.toFloat()
+            val currentRatio = cropRect.width() / cropRect.height()
+
+            if (abs(currentRatio - screenRatio) > 0.01f) {
+                val centerX = cropRect.centerX()
+                val centerY = cropRect.centerY()
+                val newWidth: Float
+                val newHeight: Float
+
+                if (currentRatio > screenRatio) {
+                    newWidth = cropRect.width()
+                    newHeight = newWidth / screenRatio
+                } else {
+                    newHeight = cropRect.height()
+                    newWidth = newHeight * screenRatio
+                }
+
+                cropRect.set(
+                    centerX - newWidth / 2,
+                    centerY - newHeight / 2,
+                    centerX + newWidth / 2,
+                    centerY + newHeight / 2
+                )
+            }
+        }
+
+        val size = when (currentCropType) {
+            CropType.SQUARE -> cropRect.width()
+            else -> min(cropRect.width(), cropRect.height())
+        }
+
         if (size < minSize) {
             val centerX = cropRect.centerX()
             val centerY = cropRect.centerY()
-            val halfSize = minSize / 2
-            cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+            when (currentCropType) {
+                CropType.SQUARE -> {
+                    val halfSize = minSize / 2
+                    cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+                }
+                CropType.SCREEN_RATIO -> {
+                    val screenRatio = width.toFloat() / height.toFloat()
+                    val halfWidth = minSize / 2
+                    val halfHeight = halfWidth / screenRatio
+                    cropRect.set(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight)
+                }
+                else -> {}
+            }
         } else if (size > maxSize) {
             val centerX = cropRect.centerX()
             val centerY = cropRect.centerY()
-            val halfSize = maxSize / 2
-            cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+            when (currentCropType) {
+                CropType.SQUARE -> {
+                    val halfSize = maxSize / 2
+                    cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+                }
+                CropType.SCREEN_RATIO -> {
+                    val screenRatio = width.toFloat() / height.toFloat()
+                    val halfWidth = maxSize / 2
+                    val halfHeight = halfWidth / screenRatio
+                    cropRect.set(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight)
+                }
+                else -> {}
+            }
         }
     }
 
@@ -263,6 +373,10 @@ class CropUtils @JvmOverloads constructor(
     }
 
     fun cropImage(): Bitmap? {
+        if (currentCropType == CropType.FULL_SCREEN) {
+            return originalBitmap
+        }
+
         originalBitmap?.let { bitmap ->
             val matrix = Matrix()
             matrix.postTranslate(imageTranslateX, imageTranslateY)
@@ -284,28 +398,48 @@ class CropUtils @JvmOverloads constructor(
                     points[4], points[5]
                 )
 
-                val cropSize = min(transformedCropRect.width(), transformedCropRect.height())
+                val cropWidth = transformedCropRect.width()
+                val cropHeight = transformedCropRect.height()
                 val centerX = transformedCropRect.centerX()
                 val centerY = transformedCropRect.centerY()
-                val halfSize = cropSize / 2
 
-                val finalCropRect = RectF(
-                    centerX - halfSize, centerY - halfSize,
-                    centerX + halfSize, centerY + halfSize
-                )
+                val finalCropRect = when (currentCropType) {
+                    CropType.SQUARE -> {
+                        val cropSize = min(cropWidth, cropHeight)
+                        val halfSize = cropSize / 2
+                        RectF(
+                            centerX - halfSize, centerY - halfSize,
+                            centerX + halfSize, centerY + halfSize
+                        )
+                    }
+                    CropType.SCREEN_RATIO -> {
+                        RectF(
+                            transformedCropRect.left, transformedCropRect.top,
+                            transformedCropRect.right, transformedCropRect.bottom
+                        )
+                    }
+                    else -> {
+                        RectF(
+                            centerX - cropWidth / 2, centerY - cropHeight / 2,
+                            centerX + cropWidth / 2, centerY + cropHeight / 2
+                        )
+                    }
+                }
 
                 val scaleX = bitmap.width / imageRect.width()
                 val scaleY = bitmap.height / imageRect.height()
 
                 val cropX = ((finalCropRect.left - imageRect.left) * scaleX).toInt()
                 val cropY = ((finalCropRect.top - imageRect.top) * scaleY).toInt()
-                val cropSizePixels = (cropSize * scaleX).toInt()
+                val cropWidthPixels = (finalCropRect.width() * scaleX).toInt()
+                val cropHeightPixels = (finalCropRect.height() * scaleY).toInt()
 
                 val safeX = cropX.coerceIn(0, bitmap.width - 1)
                 val safeY = cropY.coerceIn(0, bitmap.height - 1)
-                val safeSize = cropSizePixels.coerceIn(1, min(bitmap.width - safeX, bitmap.height - safeY))
+                val safeWidth = cropWidthPixels.coerceIn(1, bitmap.width - safeX)
+                val safeHeight = cropHeightPixels.coerceIn(1, bitmap.height - safeY)
 
-                return Bitmap.createBitmap(bitmap, safeX, safeY, safeSize, safeSize)
+                return Bitmap.createBitmap(bitmap, safeX, safeY, safeWidth, safeHeight)
             }
         }
         return null
@@ -345,13 +479,41 @@ class CropUtils @JvmOverloads constructor(
      * @param ratio 相对于屏幕最小边长的比例 (0.1 - 0.9)
      */
     fun setCropRatio(ratio: Float) {
-        val safeRatio = ratio.coerceIn(0.1f, 0.9f)
-        val cropSize = min(width, height) * safeRatio
-        val centerX = width / 2f
-        val centerY = height / 2f
-        val halfSize = cropSize / 2
+        if (currentCropType == CropType.FULL_SCREEN) return
 
-        cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+        val safeRatio = ratio.coerceIn(0.1f, 0.9f)
+        when (currentCropType) {
+            CropType.SQUARE -> {
+                val cropSize = min(width, height) * safeRatio
+                val centerX = width / 2f
+                val centerY = height / 2f
+                val halfSize = cropSize / 2
+                cropRect.set(centerX - halfSize, centerY - halfSize, centerX + halfSize, centerY + halfSize)
+            }
+            CropType.SCREEN_RATIO -> {
+                val screenRatio = width.toFloat() / height.toFloat()
+                val cropWidth: Float
+                val cropHeight: Float
+
+                if (screenRatio > 1) {
+                    cropHeight = height * safeRatio
+                    cropWidth = cropHeight * screenRatio
+                } else {
+                    cropWidth = width * safeRatio
+                    cropHeight = cropWidth / screenRatio
+                }
+
+                val centerX = width / 2f
+                val centerY = height / 2f
+                cropRect.set(
+                    centerX - cropWidth / 2,
+                    centerY - cropHeight / 2,
+                    centerX + cropWidth / 2,
+                    centerY + cropHeight / 2
+                )
+            }
+            else -> {}
+        }
         invalidate()
     }
 }
