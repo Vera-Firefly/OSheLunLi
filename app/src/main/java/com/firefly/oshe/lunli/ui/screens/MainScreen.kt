@@ -94,6 +94,7 @@ class MainScreen(
                     endBar?.removeAllViews()
                     endBar?.layoutParams?.height = WRAP_CONTENT
                     endBar?.addView(createInputContainer())
+                    endBar?.addView(createEndBarContainer())
                 }
             }
             setOnBackClickListener {
@@ -319,7 +320,7 @@ class MainScreen(
         endBar = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, 40.dp)
             setBackgroundColor(ContextCompat.getColor(context, R.color.white))
-            orientation = HORIZONTAL
+            orientation = VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(8.dp, 0, 8.dp, 0)
             createEndBarContainer()

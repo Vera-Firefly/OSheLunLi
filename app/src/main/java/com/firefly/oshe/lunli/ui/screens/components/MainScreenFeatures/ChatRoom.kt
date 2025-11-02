@@ -235,6 +235,47 @@ class ChatRoom(
         }
     }
 
+    fun createEndBarContainer(): LinearLayout {
+        return LinearLayout(context).apply {
+            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER
+
+            val buttons = listOf(
+                createImageButton(R.drawable.picture) {
+                    context.ShowToast("图片上传功能待开发中")
+                },
+                createImageButton(R.drawable.camera) {
+                    context.ShowToast("摄像功能待开发中")
+                },
+                createImageButton(R.drawable.smile) {
+                    context.ShowToast("表情包功能待开发中")
+                },
+                createImageButton(R.drawable.add_btn) {
+                    context.ShowToast("更多功能待开发中")
+                }
+            )
+
+            buttons.forEach { button ->
+                addView(button, LayoutParams(0, 28.dp, 1f).apply {
+                    gravity = Gravity.CENTER
+                })
+            }
+        }
+    }
+
+    private fun createImageButton(iconRes: Int, onClick: () -> Unit = {}): ShapeableImageView {
+        return ShapeableImageView(context).apply {
+            setImageResource(iconRes)
+            layoutParams = LayoutParams(28.dp, 28.dp)
+            shapeAppearanceModel = shapeAppearanceModel.toBuilder()
+                .setAllCornerSizes(4f.dp)
+                .build()
+
+            setOnClickListener { onClick() }
+        }
+    }
+
     fun setRoomStatus(): LinearLayout? {
         onRoomStatus()
         return roomStatus
