@@ -26,11 +26,11 @@ import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.MarkdownRenderer
-import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
+import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomPrefManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
@@ -38,11 +38,11 @@ import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
-import io.ktor.http.ContentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,6 +80,10 @@ class ChatRoom(
     }
     private val userMessageCacheManager by lazy {
         MessageCacheManager(context, userData.userId)
+    }
+
+    private val roomPrefManager by lazy {
+        RoomPrefManager(context)
     }
 
     private val interaction by lazy {
@@ -449,8 +453,68 @@ class ChatRoom(
                 }
                 true
             }
+            menu.add("加入隐藏房间").setOnMenuItemClickListener {
+                showJoinHiddenRoomDialog()
+                true
+            }
             show()
         }
+    }
+
+    private fun showJoinHiddenRoomDialog() {
+        val view = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+        }
+        val input = TextInputEditText(context).apply {
+            hint = "隐藏房间ID"
+            setTextColor(Color.BLACK)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+                cornerRadius = 8.dp.toFloat()
+                setStroke(1, Color.argb(50, 0, 0, 0))
+            }
+            setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+        }
+        view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle("输入隐藏房间ID")
+            .setView(view)
+            .setPositiveButton("加入") { _, _ ->
+                val roomId = input.text.toString().trim()
+                if (roomId.isNotEmpty()) {
+                    joinHiddenRoom(roomId)
+                } else {
+                    context.ShowToast("请输入房间ID")
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun joinHiddenRoom(roomId: String) {
+        client.getData("HideRoomInfo", roomId, object : Client.ResultCallback {
+            override fun onSuccess(content: String?) {
+                content?.let { roomJson ->
+                    try {
+                        val roomInfo = parseRoomInfo(roomJson)
+                        roomPrefManager.saveHiddenRoom(roomInfo)
+                        (roomAdapter as? RoomAdapter)?.addRoomIfNotExists(roomInfo)
+                        context.ShowToast("隐藏房间加入成功")
+                    } catch (e: Exception) {
+                        context.ShowToast("房间信息解析失败")
+                    }
+                } ?: run {
+                    context.ShowToast("未找到该隐藏房间")
+                }
+            }
+
+            override fun onFailure(error: String?) {
+                context.ShowToast("加入隐藏房间失败: $error")
+            }
+        })
     }
 
     private fun addRoomDialog() {
@@ -513,6 +577,13 @@ class ChatRoom(
         }
         dialogView.addView(passwordInput, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
+        val hideRoomCheckbox = CheckBox(context).apply {
+            text = "隐藏房间"
+            setTextColor(Color.BLACK)
+            setPadding(0, 8.dp, 0, 8.dp)
+        }
+        dialogView.addView(hideRoomCheckbox, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
         MaterialAlertDialogBuilder(context)
             .setView(dialogView)
             .setTitle("创建新房间")
@@ -520,6 +591,7 @@ class ChatRoom(
                 val title = titleInput.text.toString()
                 val roomMessage = messageInput.text.toString()
                 val roomPassword = passwordInput.text.toString()
+                val isHiddenRoom = hideRoomCheckbox.isChecked
 
                 if (title.isEmpty()) {
                     context.ShowToast("请输入房间标题")
@@ -535,11 +607,23 @@ class ChatRoom(
                     roomPassword = roomPassword.takeIf { it.isNotBlank() } ?: "Null"
                 )
 
-                uploadRoomToClient(newRoom, object : Client.ResultCallback {
+                uploadRoomToClient(isHiddenRoom, newRoom, object : Client.ResultCallback {
                     override fun onSuccess(content: String?) {
                         addRoom(newRoom)
                         SBClient.createRoom(newRoom.id)
-                        context.ShowToast("房间创建成功")
+
+                        if (isHiddenRoom) {
+                            roomPrefManager.saveHiddenRoom(newRoom)
+                            context.ShowToast("房间ID: ${newRoom.id}")
+                            /*
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("房间ID", newRoom.id)
+                            clipboard.setPrimaryClip(clip)
+                            context.ShowToast("隐藏房间创建成功！房间ID已复制到剪切板")
+                             */
+                        } else {
+                            context.ShowToast("房间创建成功")
+                        }
                     }
 
                     override fun onFailure(error: String?) {
@@ -615,6 +699,16 @@ class ChatRoom(
                     "Null"
                 )
             ))
+            loadLocalRooms()
+        }
+
+        private fun loadLocalRooms() {
+            roomPrefManager.getSavedRooms().forEach { room ->
+                addRoomIfNotExists(room)
+            }
+            roomPrefManager.getHiddenRooms().forEach { room ->
+                addRoomIfNotExists(room)
+            }
         }
 
         override fun addRoom(roomInfo: RoomInfo) {
@@ -695,6 +789,9 @@ class ChatRoom(
             RoomCreator.text = "创建者: ${room.creator}"
             RoomMessage.text = room.roomMessage
 
+            val isHideRoom = roomPrefManager.getHiddenRooms().any { it.id == room.id }
+            val path =  if (isHideRoom) {"HideRoomInfo"} else "RoomInfo"
+
             rootView.setOnClickListener {
                 if (isAddNewRoom) {
                     detectRoomPassword(room) { callback ->
@@ -710,7 +807,7 @@ class ChatRoom(
                         showRoomDeleteDialog(room) { callback ->
                             if (callback) {
                                 client.deleteData(
-                                    "RoomInfo",
+                                    path,
                                     room.id,
                                     object : Client.ResultCallback {
                                         override fun onSuccess(content: String?) {
@@ -728,7 +825,18 @@ class ChatRoom(
                             }
                         }
                     } else {
-                        context.ShowToast("别人的房间你删逆🐎呢")
+                        if (isHideRoom) {
+                            showHiddenRoomLeaveDialog(room) { callback ->
+                                if (callback) {
+                                    roomPrefManager.removeHiddenRoom(room.id)
+                                    rooms.remove(room)
+                                    notifyItemRemoved(holder.bindingAdapterPosition)
+                                    context.ShowToast("已离开隐藏房间")
+                                }
+                            }
+                        } else {
+                            context.ShowToast("别人的房间你删逆🐎呢")
+                        }
                     }
                 }
             }
@@ -1030,7 +1138,7 @@ class ChatRoom(
         })
     }
 
-    private fun uploadRoomToClient(roomInfo: RoomInfo, callback: Client.ResultCallback) {
+    private fun uploadRoomToClient(hide: Boolean, roomInfo: RoomInfo, callback: Client.ResultCallback) {
         try {
             val room = JSONObject().apply {
                 put("id", roomInfo.id)
@@ -1040,7 +1148,9 @@ class ChatRoom(
                 put("roomPassword", roomInfo.roomPassword)
             }.toString()
 
-            client.uploadData("RoomInfo", roomInfo.id, room, callback)
+            val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+
+            client.uploadData(path, roomInfo.id, room, callback)
         } catch (e: Exception) {
             callback.onFailure("Failed To Create Room: ${e.message}")
         }
@@ -1078,14 +1188,31 @@ class ChatRoom(
         try {
             val result = JSONObject(content)
             val keys = result.keys()
+            val serverRoomIds = mutableListOf<String>()
 
             while (keys.hasNext()) {
                 val key = keys.next()
                 val roomJson = result.getString(key)
                 val roomInfo = parseRoomInfo(roomJson)
+                serverRoomIds.add(roomInfo.id)
+
+                val localRoom = roomPrefManager.getRoomById(roomInfo.id)
+                if (localRoom != null && localRoom.roomPassword != roomInfo.roomPassword) {
+                    roomPrefManager.removeSavedRoom(roomInfo.id)
+                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                }
 
                 (roomAdapter as? RoomAdapter)?.addRoomIfNotExists(roomInfo)
             }
+
+            val allLocalRooms = roomPrefManager.getSavedRooms() + roomPrefManager.getHiddenRooms()
+            allLocalRooms.forEach { localRoom ->
+                if (!serverRoomIds.contains(localRoom.id) &&
+                    !roomPrefManager.getHiddenRooms().any { it.id == localRoom.id }) {
+                    roomPrefManager.removeSavedRoom(localRoom.id)
+                }
+            }
+
         } catch (e: Exception) {
             isLoading = false
         } finally {
@@ -1117,49 +1244,71 @@ class ChatRoom(
             .show()
     }
 
+    private fun showHiddenRoomLeaveDialog(room: RoomInfo, callBack: (Boolean) -> Unit = {}) {
+        MaterialAlertDialogBuilder(context)
+            .setTitle("离开隐藏房间?")
+            .setMessage("确定要离开隐藏房间: ${room.title}?\n这将从你的房间列表中移除该房间")
+            .setPositiveButton("离开") { _, _ ->
+                callBack(true)
+            }
+            .setNegativeButton("取消") { _, _ ->
+                callBack(false)
+            }
+            .show()
+    }
+
     private fun detectRoomPassword(room: RoomInfo, callback: (Boolean) -> Unit) {
         if (room.roomPassword.equals("Null")) {
             currentRoomId = room.id
             loadRoomMessages(room.id)
             callback(true)
         } else {
-            val view = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(16.dp, 16.dp, 16.dp, 16.dp)
-            }
-            val input = TextInputEditText(context).apply {
-                hint = "房间密码"
-                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                setTextColor(Color.BLACK)
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    setColor(Color.WHITE)
-                    cornerRadius = 8.dp.toFloat()
-                    setStroke(1, Color.argb(50, 0, 0, 0))
+            val savedRoom = roomPrefManager.getRoomById(room.id)
+            if (savedRoom != null && savedRoom.roomPassword == room.roomPassword) {
+                currentRoomId = room.id
+                loadRoomMessages(room.id)
+                context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
+                callback(true)
+            } else {
+                val view = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(16.dp, 16.dp, 16.dp, 16.dp)
                 }
-                setPadding(8.dp, 8.dp, 8.dp, 8.dp)
-            }
-            view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+                val input = TextInputEditText(context).apply {
+                    hint = "房间密码"
+                    inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                    setTextColor(Color.BLACK)
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        setColor(Color.WHITE)
+                        cornerRadius = 8.dp.toFloat()
+                        setStroke(1, Color.argb(50, 0, 0, 0))
+                    }
+                    setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+                }
+                view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
-            MaterialAlertDialogBuilder(context)
-                .setTitle("请输入房间密码")
-                .setView(view)
-                .setPositiveButton("确认") { _,_ ->
-                    val password = input.text.toString()
-                    if (password.equals(room.roomPassword)) {
-                        currentRoomId = room.id
-                        loadRoomMessages(room.id)
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("请输入房间密码")
+                    .setView(view)
+                    .setPositiveButton("确认") { _, _ ->
+                        val password = input.text.toString()
+                        if (password == room.roomPassword) {
+                            roomPrefManager.saveRoom(room)
+                            currentRoomId = room.id
+                            loadRoomMessages(room.id)
                             context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
-                        callback(true)
-                    } else {
-                        context.ShowToast("错误的密码")
+                            callback(true)
+                        } else {
+                            context.ShowToast("错误的密码")
+                            callback(false)
+                        }
+                    }
+                    .setNegativeButton("取消") { _, _ ->
                         callback(false)
                     }
-                }
-                .setNegativeButton("取消") { _,_ ->
-                    callback(false)
-                }
-                .show()
+                    .show()
+            }
         }
     }
 
