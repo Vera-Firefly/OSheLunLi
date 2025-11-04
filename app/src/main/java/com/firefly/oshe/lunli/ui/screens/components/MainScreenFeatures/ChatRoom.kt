@@ -1,5 +1,7 @@
 package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.*
 import android.graphics.drawable.*
@@ -42,7 +44,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -335,7 +336,9 @@ class ChatRoom(
             setOnClickListener {
                 loadRooms { callback ->
                     if (callback) {
-                        loadRoomsFromClient()
+                        loadRoomsFromClient(false) {
+                            if (it) loadRoomsFromClient(true) {}
+                        }
                     } else {
                         // TODO:
                     }
@@ -614,13 +617,10 @@ class ChatRoom(
 
                         if (isHiddenRoom) {
                             roomPrefManager.saveHiddenRoom(newRoom)
-                            context.ShowToast("房间ID: ${newRoom.id}")
-                            /*
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("房间ID", newRoom.id)
+                            val clip = ClipData.newPlainText("RoomID", newRoom.id)
                             clipboard.setPrimaryClip(clip)
-                            context.ShowToast("隐藏房间创建成功！房间ID已复制到剪切板")
-                             */
+                            context.ShowToast("房间ID已复制到剪切板")
                         } else {
                             context.ShowToast("房间创建成功")
                         }
@@ -685,7 +685,9 @@ class ChatRoom(
         init {
             loadRooms { callback ->
                 if (callback) {
-                    loadRoomsFromClient()
+                    loadRoomsFromClient(false) {
+                        if (it) loadRoomsFromClient(true) {}
+                    }
                 } else {
                     // TODO:
                 }
@@ -803,7 +805,7 @@ class ChatRoom(
                         }
                     }
                 } else {
-                    if (room.id.startsWith(userData.userId)) {
+                    if (room.id.startsWith("${userData.userId}-")) {
                         showRoomDeleteDialog(room) { callback ->
                             if (callback) {
                                 client.deleteData(
@@ -813,6 +815,7 @@ class ChatRoom(
                                         override fun onSuccess(content: String?) {
                                             rooms.remove(room)
                                             notifyItemRemoved(holder.bindingAdapterPosition)
+                                            if (isHideRoom) roomPrefManager.removeHiddenRoom(room.id)
                                             context.ShowToast("删除成功")
                                         }
 
@@ -1126,14 +1129,17 @@ class ChatRoom(
         }
     }
 
-    private fun loadRoomsFromClient() {
-        client.getDir("RoomInfo", object : Client.ResultCallback {
+    private fun loadRoomsFromClient(hide: Boolean, callback: (Boolean) -> Unit) {
+        val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+        client.getDir(path, object : Client.ResultCallback {
             override fun onSuccess(content: String) {
-                processRoomDirectory(content)
+                processRoomDirectory(path, content)
+                callback(true)
             }
 
             override fun onFailure(error: String) {
                 isLoading = false
+                callback(false)
             }
         })
     }
@@ -1156,7 +1162,7 @@ class ChatRoom(
         }
     }
 
-    private fun processRoomDirectory(content: String) {
+    private fun processRoomDirectory(path: String, content: String) {
         try {
             val jsonArray = JSONArray(content)
             val rooms = mutableListOf<String>()
@@ -1169,7 +1175,7 @@ class ChatRoom(
             }
 
             if (rooms.isNotEmpty()) {
-                client.getMultipleFiles("RoomInfo", rooms, object : Client.ResultCallback {
+                client.getMultipleFiles(path, rooms, object : Client.ResultCallback {
                     override fun onSuccess(content: String) {
                         processRoomMessage(content)
                     }
@@ -1196,9 +1202,15 @@ class ChatRoom(
                 val roomInfo = parseRoomInfo(roomJson)
                 serverRoomIds.add(roomInfo.id)
 
-                val localRoom = roomPrefManager.getRoomById(roomInfo.id)
-                if (localRoom != null && localRoom.roomPassword != roomInfo.roomPassword) {
+                val localLockedRoom = roomPrefManager.getRoomById(roomInfo.id)
+                val localHideRoom = roomPrefManager.getRoomById(roomInfo.id)
+                if (localLockedRoom != null && localLockedRoom.roomPassword != roomInfo.roomPassword) {
                     roomPrefManager.removeSavedRoom(roomInfo.id)
+                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                }
+
+                if (localHideRoom != null && localHideRoom.roomPassword != roomInfo.roomPassword) {
+                    roomPrefManager.removeHiddenRoom(roomInfo.id)
                     context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
                 }
 
