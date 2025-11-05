@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textview.MaterialTextView
 
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.data.ChatRoom.Message
@@ -28,15 +29,26 @@ import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomPrefManager
+import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
+import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
-import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.ChatAdapterView
-import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.MessageLoading
-import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.RoomAdapterView
 import com.firefly.oshe.lunli.utils.ImageUtils
-import com.google.android.material.textview.MaterialTextView
+import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.RoomAdapterView
+import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.ChatAdapterView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.mutableListOf
 
 class ChatRoom(
     private val context: Context,
@@ -47,8 +59,13 @@ class ChatRoom(
     private lateinit var client: Client
     private lateinit var cropDialog: CropDialog
 
+    private var roomAdapter: RecyclerView.Adapter<*>? = null
+    private var chatAdapter: RecyclerView.Adapter<*>? = null
     private var roomRecyclerView: RecyclerView? = null
     private var chatRecyclerView: RecyclerView? = null
+
+    private lateinit var roomAdapterView: RoomAdapterView
+    private lateinit var chatAdapterView: ChatAdapterView
 
     private var roomSelection: LinearLayout? = null
     private var chatRoom: LinearLayout? = null
@@ -59,13 +76,26 @@ class ChatRoom(
     private var roomStatus_done: ShapeableImageView? = null
 
     private var currentRoomId: String? = null
-    private val roomAdapterView by lazy { RoomAdapterView(context, userData) }
-    private val chatAdapterView by lazy { ChatAdapterView(context) }
+    private val userCacheManager by lazy {
+        SeparateUserCacheManager(context)
+    }
+    private val userMessageCacheManager by lazy {
+        MessageCacheManager(context, userData.userId)
+    }
 
-    private val roomPrefManager by lazy { RoomPrefManager(context, userData.userId) }
-    private val userMessageCacheManager by lazy { MessageCacheManager(context, userData.userId) }
-    private val interaction by lazy { Interaction(context) }
-    private val messageLoading by lazy { MessageLoading(context, userData) }
+    private val roomPrefManager by lazy {
+        RoomPrefManager(context, userData.userId)
+    }
+
+    private val interaction by lazy {
+        Interaction(context)
+    }
+
+    private var messageSubscription: Job? = null
+    private var currentSubscription: Job? = null
+
+    private var pollingJob: Job? = null
+    private var lastPollTime: Long = 0
 
     fun interface OnBackClickListener {
         fun onBackClicked()
@@ -88,21 +118,62 @@ class ChatRoom(
     }
 
     private var isAddNewRoom: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            roomAdapterView.setAddNewRoomMode(value)
+        }
+
+    private var isLoading: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+        }
 
     fun createView(): LinearLayout {
         mainView = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
 
+            initializeAdapters()
             createRoomSelectionView()
             createChatRoomView()
         }
-        roomAdapterView.setOnRoomSelectedListener { roomInfo ->
-            roomSelectedListener?.onRoomSelected()
-            addExitRoom(roomInfo)
-            mainView.removeAllViews()
-            mainView.addView(chatRoom)
-        }
         return mainView
+    }
+
+    private fun initializeAdapters() {
+        loadRooms { callback ->
+            if (callback) {
+                loadRoomsFromClient(false) {
+                    if (it) loadRoomsFromClient(true) {}
+                }
+            } else {
+                // TODO:
+            }
+        }
+
+        roomAdapterView = RoomAdapterView(
+            context = context,
+            userData = userData,
+            roomPrefManager = roomPrefManager,
+            client = Client(context),
+            onRoomSelected = { room ->
+                currentRoomId = room.id
+                mainView.removeAllViews()
+                mainView.addView(chatRoom)
+                loadRoomMessages(room.id)
+                addExitRoom(room)
+                roomSelectedListener?.onRoomSelected()
+            },
+            onRoomDeleted = { room ->
+                // 留着有用
+            },
+            onHiddenRoomLeft = { room ->
+                // 留着有用
+            }
+        )
+
+        chatAdapterView = ChatAdapterView()
     }
 
     private fun addExitRoom(roomInfo: RoomInfo) {
@@ -119,8 +190,8 @@ class ChatRoom(
                     .setAllCornerSizes(8f.dp)
                     .build()
                 setOnClickListener {
-                    messageLoading.unsubscribeFromMessages()
-                    (chatAdapterView.chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
+                    unsubscribeFromMessages()
+                    (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
                         userMessageCacheManager.saveMessagesToCache(roomInfo.id, messages)
                     }
                     backClickListener?.onBackClicked()
@@ -188,7 +259,7 @@ class ChatRoom(
                 isClickable = true
                 isFocusable = true
                 contentDescription = "SendButton"
-            
+
                 setOnTouchListener { v, event ->
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
@@ -242,7 +313,7 @@ class ChatRoom(
         var image = "NULL"
         inf?.userImage?.let { image = it }
         if (message.isNotEmpty()) {
-             chatAdapterView.addMessage(
+            addMessage(
                 Message(
                     currentId,
                     userData.userName + " (" + userData.userId + ")",
@@ -342,10 +413,10 @@ class ChatRoom(
                 .setAllCornerSizes(8f.dp)
                 .build()
             setOnClickListener {
-                messageLoading.loadRooms { callback ->
+                loadRooms { callback ->
                     if (callback) {
-                        messageLoading.loadRoomsFromClient(false) {
-                            if (it) messageLoading.loadRoomsFromClient(true) {}
+                        loadRoomsFromClient(false) {
+                            if (it) loadRoomsFromClient(true) {}
                         }
                     } else {
                         // TODO:
@@ -468,20 +539,20 @@ class ChatRoom(
             override fun onSuccess(content: String?) {
                 content?.let { roomJson ->
                     try {
-                        val roomInfo = messageLoading.parseRoomInfo(roomJson)
+                        val roomInfo = parseRoomInfo(roomJson)
                         roomPrefManager.saveHiddenRoom(roomInfo)
-                        (roomAdapterView.roomAdapter as? RoomAdapterView.RoomAdapter)?.addRoomIfNotExists(roomInfo)
-                        context.ShowToast("隐藏房间加入成功")
+                        roomAdapterView.addRoomIfNotExists(roomInfo)
+                        context.ShowToast("已加入房间: $roomId")
                     } catch (e: Exception) {
                         context.ShowToast("房间信息解析失败")
                     }
                 } ?: run {
-                    context.ShowToast("未找到该隐藏房间")
+                    context.ShowToast("未找到该房间")
                 }
             }
 
             override fun onFailure(error: String?) {
-                context.ShowToast("加入隐藏房间失败: $error")
+                context.ShowToast("加入房间失败: $error")
             }
         })
     }
@@ -576,7 +647,7 @@ class ChatRoom(
                     roomPassword = roomPassword.takeIf { it.isNotBlank() } ?: "Null"
                 )
 
-                messageLoading.uploadRoomToClient(isHiddenRoom, newRoom, object : Client.ResultCallback {
+                uploadRoomToClient(isHiddenRoom, newRoom, object : Client.ResultCallback {
                     override fun onSuccess(content: String?) {
                         roomAdapterView.addRoom(newRoom)
                         SBClient.createRoom(newRoom.id)
@@ -609,7 +680,8 @@ class ChatRoom(
             roomRecyclerView = RecyclerView(context).apply {
                 layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
                 layoutManager = LinearLayoutManager(context)
-                adapter = roomAdapterView.RoomAdapter()
+                roomAdapter = roomAdapterView.createAdapter()
+                adapter = roomAdapter
             }
             addView(roomRecyclerView)
         }
@@ -628,10 +700,357 @@ class ChatRoom(
                 layoutManager = LinearLayoutManager(context).apply {
                     stackFromEnd = true
                 }
-                adapter = chatAdapterView.ChatAdapter()
+                chatAdapter = chatAdapterView.createAdapter()
+                adapter = chatAdapter
             }
             addView(chatRecyclerView)
         }
+    }
+
+    private fun addMessage(message: Message) {
+        (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessage(message)
+        chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+    }
+
+    private fun loadRooms(callback: (Boolean) -> Unit = {}) {
+        client = Client(context)
+        if (isLoading) {
+            context.ShowToast("正在加载房间列表, 请稍后...")
+            callback(false)
+        } else {
+            isLoading = true
+            callback(true)
+        }
+    }
+
+    private fun loadRoomsFromClient(hide: Boolean, callback: (Boolean) -> Unit) {
+        val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+        client.getDir(path, object : Client.ResultCallback {
+            override fun onSuccess(content: String) {
+                processRoomDirectory(path, content)
+                callback(true)
+            }
+
+            override fun onFailure(error: String) {
+                isLoading = false
+                callback(false)
+            }
+        })
+    }
+
+    private fun uploadRoomToClient(hide: Boolean, roomInfo: RoomInfo, callback: Client.ResultCallback) {
+        try {
+            val room = JSONObject().apply {
+                put("id", roomInfo.id)
+                put("title", roomInfo.title)
+                put("creator", roomInfo.creator)
+                put("roomMessage", roomInfo.roomMessage)
+                put("roomPassword", roomInfo.roomPassword)
+            }.toString()
+
+            val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+
+            client.uploadData(path, roomInfo.id, room, callback)
+        } catch (e: Exception) {
+            callback.onFailure("Failed To Create Room: ${e.message}")
+        }
+    }
+
+    private fun processRoomDirectory(path: String, content: String) {
+        try {
+            val jsonArray = JSONArray(content)
+            val rooms = mutableListOf<String>()
+
+            for (i in 0 until jsonArray.length()) {
+                val json = jsonArray.getJSONObject(i)
+                val roomName = json.getString("name")
+                if (roomName.endsWith(".json"))
+                    rooms.add(roomName.replace(".json", ""))
+            }
+
+            if (rooms.isNotEmpty()) {
+                client.getMultipleFiles(path, rooms, object : Client.ResultCallback {
+                    override fun onSuccess(content: String) {
+                        processRoomMessage(path, content)
+                    }
+
+                    override fun onFailure(error: String) {
+                        // TODO:
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            // TODO:
+        }
+    }
+
+    private fun processRoomMessage(path: String, content: String) {
+        try {
+            val result = JSONObject(content)
+            val keys = result.keys()
+            val serverRoomIds = mutableListOf<String>()
+
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val roomJson = result.getString(key)
+                val roomInfo = parseRoomInfo(roomJson)
+                serverRoomIds.add(roomInfo.id)
+
+                val localLockedRoom = roomPrefManager.getRoomById(roomInfo.id)
+                val localHideRoom = roomPrefManager.getRoomById(roomInfo.id)
+                if (localLockedRoom != null && localLockedRoom.roomPassword != roomInfo.roomPassword) {
+                    roomPrefManager.removeSavedRoom(roomInfo.id)
+                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                }
+
+                if (localHideRoom != null && localHideRoom.roomPassword != roomInfo.roomPassword) {
+                    roomPrefManager.removeHiddenRoom(roomInfo.id)
+                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                }
+
+                if (path != "HideRoomInfo") roomAdapterView.addRoomIfNotExists(roomInfo)
+            }
+
+            val allLocalRooms = roomPrefManager.getSavedRooms() + roomPrefManager.getHiddenRooms()
+            allLocalRooms.forEach { localRoom ->
+                if (!serverRoomIds.contains(localRoom.id) &&
+                    !roomPrefManager.getHiddenRooms().any { it.id == localRoom.id }) {
+                    roomPrefManager.removeSavedRoom(localRoom.id)
+                }
+            }
+
+        } catch (e: Exception) {
+            isLoading = false
+        } finally {
+            isLoading = false
+        }
+    }
+
+    private fun parseRoomInfo(json: String): RoomInfo {
+        val obj = JSONObject(json)
+        return RoomInfo(
+            id = obj.optString("id", ""),
+            title = obj.optString("title", ""),
+            creator = obj.optString("creator", ""),
+            roomMessage = obj.optString("roomMessage", ""),
+            roomPassword = obj.optString("roomPassword", "")
+        )
+    }
+
+    private suspend fun getUserInf(userId: String): UserInformation {
+        return try {
+            val (userName, userImage) = userCacheManager.getUserDisplayInfo(userId)
+            UserInformation(userId, userName, userImage, "")
+        } catch (e: Exception) {
+            UserInformation(userId, "未知用户", "NULL", "")
+        }
+    }
+
+    private fun loadRoomMessages(roomId: String) {
+        unsubscribeFromMessages()
+        currentRoomId = roomId
+        (chatAdapter as? ChatAdapterView.ChatAdapter)?.clearMessages()
+
+        val cachedMessages = userMessageCacheManager.loadCachedMessages(roomId)
+        cachedMessages.forEach { message ->
+            (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+        }
+        loadRoomMessagesll(roomId)
+    }
+
+    private fun loadRoomMessagesll(roomId: String) {
+        unsubscribeFromMessages()
+
+        messageSubscription = CoroutineScope(Dispatchers.Main).launch {
+            loadExistingMessages(roomId)
+            // subscribeToMessages(roomId)
+            startPollingMessages(roomId)
+        }
+    }
+
+    /**
+     * 订阅消息: 功能不可用, 待SupaBase数据路完善RealTime后可使用
+     */
+    private fun subscribeToMessages(roomId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentSubscription = launch {
+                try {
+                    SBClient.subscribeMessages(roomId).collect { message ->
+                        val processedMessage = withContext(Dispatchers.IO) {
+                            val sender = getUserInf(message.user_id)
+                            Message(
+                                message.id,
+                                "${sender.userName} (${message.user_id})",
+                                sender.userImage,
+                                message.content
+                            )
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            if (currentRoomId == roomId) {
+                                (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(
+                                    processedMessage
+                                )
+                                chatRecyclerView?.scrollToPosition(
+                                    (chatAdapter?.itemCount ?: 1) - 1
+                                )
+                            }
+                            (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
+                                userMessageCacheManager.saveMessagesToCache(roomId, messages)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (currentRoomId == roomId) {
+                        withContext(Dispatchers.Main) {
+                            context.ShowToast("订阅消息失败: ${e.message}")
+                        }
+                    }
+                } finally {
+                    context.ShowToast("订阅消息结束")
+                }
+            }
+        }
+    }
+
+    private fun startPollingMessages(roomId: String) {
+        unsubscribeFromMessages()
+        pollingJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive && currentRoomId == roomId) {
+                try {
+                    val messages = SBClient.fetchMessages(roomId)
+
+                    val newMessages = if (lastPollTime > 0) {
+                        messages.filter { dbMessage ->
+                            val messageTime = parseIso8601WithTimezone(dbMessage.created_at)
+                            messageTime > lastPollTime
+                            // it.created_at.toLongOrNull() ?: 0 > lastPollTime
+                        }
+                    } else {
+                        emptyList()
+                    }
+
+                    if (newMessages.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            processNewMessages(newMessages)
+                        }
+
+                        lastPollTime = newMessages.maxOf { dbMessage ->
+                            parseIso8601WithTimezone(dbMessage.created_at)
+                        }
+                    } else {
+                        lastPollTime = System.currentTimeMillis()
+                    }
+
+                    delay(3000L)
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        context.ShowToast("轮询消息失败: ${e.message}")
+                    }
+                    delay(5000L)
+                }
+            }
+        }
+    }
+
+    private fun parseIso8601WithTimezone(isoString: String): Long {
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                java.time.Instant.parse(isoString).toEpochMilli()
+            } else {
+                val pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX"
+                val formatter = SimpleDateFormat(pattern, Locale.getDefault())
+                formatter.timeZone = TimeZone.getTimeZone("UTC")
+                formatter.parse(isoString)?.time ?: 0L
+            }
+        } catch (e: Exception) {
+            try {
+                val simplifiedString = isoString.substringBefore(".") + "Z"
+                val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                simpleDateFormat.timeZone = TimeZone.getTimeZone("UTC")
+                simpleDateFormat.parse(simplifiedString)?.time ?: 0L
+            } catch (e2: Exception) {
+                0L
+            }
+        }
+    }
+
+    private fun processNewMessages(messages: List<SBClient.Message>) {
+        CoroutineScope(Dispatchers.IO).launch {
+            messages.forEach { dbMessage ->
+                val sender = getUserInf(dbMessage.user_id)
+                val message = Message(
+                    dbMessage.id,
+                    "${sender.userName} (${dbMessage.user_id})",
+                    sender.userImage,
+                    dbMessage.content
+                )
+                withContext(Dispatchers.Main) {
+                    (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                    chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+                }
+
+                (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { allMessages ->
+                    userMessageCacheManager.saveMessagesToCache(currentRoomId ?: return@let, allMessages)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadExistingMessages(roomId: String) {
+        try {
+            val messages = withContext(Dispatchers.IO) {
+                SBClient.fetchMessages(roomId)
+            }
+
+            /**
+             * 轮询时间戳
+             */
+            if (messages.isNotEmpty()) {
+                lastPollTime = messages.maxOf { dbMessage ->
+                    parseIso8601WithTimezone(dbMessage.created_at)
+                }
+            } else {
+                lastPollTime = System.currentTimeMillis()
+            }
+
+            messages.forEach { dbMessage ->
+                val sender = getUserInf(dbMessage.user_id)
+                val message = Message(
+                    dbMessage.id,
+                    "${sender.userName} (${dbMessage.user_id})",
+                    sender.userImage,
+                    dbMessage.content
+                )
+                if (currentRoomId == roomId) {
+                    (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                context.ShowToast("加载消息失败: ${e.message}")
+            }
+        }
+    }
+
+    private fun unsubscribeFromMessages() {
+        /**
+         * 取消轮询, SupaBase RealTime未实现
+         */
+        pollingJob?.cancel()
+        pollingJob = null
+        lastPollTime = 0
+
+        /**
+         * 取消订阅
+         */
+        messageSubscription?.cancel()
+        messageSubscription = null
+        currentSubscription?.cancel()
+        currentSubscription = null
     }
 
 }

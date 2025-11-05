@@ -1,41 +1,86 @@
 package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures
 
-import android.content.Context
 import android.graphics.Color
-import android.text.method.LinkMovementMethod
 import android.view.ViewGroup
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ImageView.ScaleType.CENTER_CROP
 import android.widget.LinearLayout
-import android.widget.LinearLayout.HORIZONTAL
-import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.firefly.oshe.lunli.MarkdownRenderer
 import com.firefly.oshe.lunli.R
-import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.data.ChatRoom.Message
 import com.firefly.oshe.lunli.dp
+import com.firefly.oshe.lunli.MarkdownRenderer
 import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.android.material.imageview.ShapeableImageView
+import android.text.method.LinkMovementMethod
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.widget.LinearLayout.HORIZONTAL
+import android.widget.LinearLayout.LayoutParams
+import android.widget.LinearLayout.VERTICAL
 
-class ChatAdapterView(private val context: Context) {
+class ChatAdapterView {
 
-    var chatAdapter: BaseChatAdapter? = null
-    var chatRecyclerView: RecyclerView? = null
+    private val messages = mutableListOf<Message>()
+    private val base64 = Ciallo().ciallo // 注意: 禁止尝试打开这个类, 除非你想你的IDE爆炸!!!
+    private val systemMessages = listOf(
+        Message(
+            "1",
+            "系统",
+            "NULL",
+            content = """
+                ## 欢迎使用Markdown聊天室
+                - 支持层级显示
+                - 支持**粗体**和*斜体*
+                - 支持[链接](https://example.com)
+                - 支持图片显示(需要图床)
+                ![]($base64)
+                - 支持表格
+                ### 表格示例:
+                | A | B |
+                |---------|---------|
+                | 1 | ○ |
+                | 2 | ● |
+                | 3 | ♥ |
+                - 支持区块引用与嵌套引用
+                > 区块引用
+                >> 嵌套引用
+                - 支持代码显示(注: 代码高亮显示未实现)
+                `行内代码`
+
+                ```python
+                # 代码块
+                def hello():
+                    print("Hello World!")
+                ```
+                - 其它类型未实现, 后继会逐一实现
+                """.trimIndent()
+        ))
+
+    fun createAdapter(): ChatAdapter {
+        return ChatAdapter()
+    }
 
     fun addMessage(message: Message) {
-        (chatAdapter as? ChatAdapter)?.addMessage(message)
-        chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+        messages.add(message)
     }
 
-    abstract inner class BaseChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        abstract fun addMessage(message: Message)
+    fun clearMessages() {
+        messages.clear()
+        messages.addAll(systemMessages)
     }
+
+    fun addMessageIfNotExists(message: Message) {
+        if (messages.none { it.id == message.id }) {
+            addMessage(message)
+        }
+    }
+
+    fun getMessages(): List<Message> = messages.toList()
 
     private enum class ContentType {
         IMAGE_BASE64,
@@ -43,62 +88,24 @@ class ChatAdapterView(private val context: Context) {
         TEXT
     }
 
-    inner class ChatAdapter : BaseChatAdapter() {
-        private val messages = mutableListOf<Message>()
-        // 注意: 禁止打开这个base64!!!!!!!!!!!! 否则后果很严重!!!!!!!!!!!!!!
-        private val base64 = Ciallo().ciallo
-        private val systemMessages = listOf(
-            Message(
-                "1",
-                "系统",
-                "NULL",
-                content = """
-                    ## 欢迎使用Markdown聊天室
-                    - 支持层级显示
-                    - 支持**粗体**和*斜体*
-                    - 支持[链接](https://example.com)
-                    - 支持图片显示(需要图床)
-                    ![]($base64)
-                    - 支持表格
-                    ### 表格示例:
-                    | A | B |
-                    |---------|---------|
-                    | 1 | ○ |
-                    | 2 | ● |
-                    | 3 | ♥ |
-                    - 支持区块引用与嵌套引用
-                    > 区块引用
-                    >> 嵌套引用
-                    - 支持代码显示(注: 代码高亮显示未实现)
-                    `行内代码`
+    inner class ChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-                    ```python
-                    # 代码块
-                    def hello():
-                        print("Hello World!")
-                    ```
-                    - 其它类型未实现, 后继会逐一实现
-                    """.trimIndent()
-            ))
-
-        override fun addMessage(message: Message) {
-            messages.add(message)
+        fun addMessage(message: Message) {
+            this@ChatAdapterView.addMessage(message)
             notifyItemInserted(messages.size - 1)
         }
 
         fun clearMessages() {
-            messages.clear()
-            messages.addAll(systemMessages)
+            this@ChatAdapterView.clearMessages()
             notifyDataSetChanged()
         }
 
         fun addMessageIfNotExists(message: Message) {
-            if (messages.none { it.id == message.id }) {
-                addMessage(message)
-            }
+            this@ChatAdapterView.addMessageIfNotExists(message)
+            notifyItemInserted(messages.size - 1)
         }
 
-        fun getMessages(): List<Message> = messages.toList()
+        fun getMessages(): List<Message> = this@ChatAdapterView.getMessages()
 
         private fun detectContentType(content: String): ContentType {
             return when {
@@ -148,7 +155,7 @@ class ChatAdapterView(private val context: Context) {
 
                 val imageView = ShapeableImageView(container.context).apply {
                     layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
-                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    scaleType = CENTER_CROP
                     setImageBitmap(bitmap)
                     adjustViewBounds = true
 
@@ -159,17 +166,16 @@ class ChatAdapterView(private val context: Context) {
 
                 container.addView(imageView)
             } catch (e: Exception) {
-                context.ShowToast("图片加载失败")
+                // 图片加载失败时不显示任何内容?
             }
         }
 
         private fun renderImageUrl(container: FrameLayout, imageUrl: String) {
             val imageView = ShapeableImageView(container.context).apply {
                 layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = CENTER_CROP
                 adjustViewBounds = true
 
-                // 使用 Glide 加载网络图片
                 Glide.with(context)
                     .load(imageUrl)
                     .into(this)
@@ -192,13 +198,10 @@ class ChatAdapterView(private val context: Context) {
             }
 
             try {
-                // Markdown
                 MarkdownRenderer.render(textView, content.replace("\n", "  \n"))
             } catch (e: IllegalStateException) {
-                // 如果 Markdown 渲染失败, 降级为普通文本
                 textView.text = content
             } catch (e: Exception) {
-                // 其他异常降级为普通文本
                 textView.text = content
             }
 
@@ -217,14 +220,14 @@ class ChatAdapterView(private val context: Context) {
                 layoutParams = LayoutParams(36.dp, 36.dp).apply {
                     setMargins(0, 0, 4.dp, 0)
                 }
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = CENTER_CROP
                 id = R.id.iv_avatar
             }
             rootLayout.addView(avatar)
 
             val contentArea = LinearLayout(parent.context).apply {
                 layoutParams = LayoutParams(0, WRAP_CONTENT, 1f)
-                orientation = LinearLayout.VERTICAL
+                orientation = VERTICAL
             }
 
             val senderName = TextView(parent.context).apply {

@@ -3,7 +3,11 @@ package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.GradientDrawable.RECTANGLE
 import android.text.TextUtils
+import android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+import android.text.InputType.TYPE_CLASS_TEXT
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -20,49 +24,61 @@ import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomPrefManager
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.dp
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import kotlin.collections.mutableListOf
 
-class RoomAdapterView(private val context: Context, private val userData: UserData) {
+class RoomAdapterView(
+    private val context: Context,
+    private val userData: UserData,
+    private val roomPrefManager: RoomPrefManager,
+    private val client: Client,
+    private val onRoomSelected: (RoomInfo) -> Unit,
+    private val onRoomDeleted: (RoomInfo) -> Unit,
+    private val onHiddenRoomLeft: (RoomInfo) -> Unit
+) {
 
-    var roomAdapter: BaseRoomAdapter? = null
-    var roomRecyclerView: RecyclerView? = null
-    private val client by lazy { Client(context) }
-    private val roomPrefManager by lazy { RoomPrefManager(context, userData.userId) }
-    private val messageLoading by lazy { MessageLoading(context, userData) }
-
+    private val rooms = mutableListOf<RoomInfo>()
+    private var adapter: RoomAdapter? = null
     private var isAddNewRoom: Boolean = true
 
-    fun interface OnRoomSelectedListener {
-        fun onRoomSelected(roomInfo: RoomInfo)
-    }
-
-    private var roomSelectedListener: OnRoomSelectedListener? = null
-
-    fun setOnRoomSelectedListener(listener: OnRoomSelectedListener) {
-        this.roomSelectedListener = listener
+    fun createAdapter(): RoomAdapter {
+        adapter = RoomAdapter()
+        return adapter!!
     }
 
     fun addRoom(roomInfo: RoomInfo) {
-        (roomAdapter as? RoomAdapter)?.addRoom(roomInfo)
-        roomRecyclerView?.scrollToPosition((roomAdapter?.itemCount ?: 1) - 1)
+        rooms.add(roomInfo)
+        adapter?.notifyItemInserted(rooms.size - 1)
     }
 
-    abstract inner class BaseRoomAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        abstract fun addRoom(roomInfo: RoomInfo)
+    fun addRoomIfNotExists(roomInfo: RoomInfo) {
+        val existingRoomIndex = rooms.indexOfFirst { it.id == roomInfo.id }
+        if (existingRoomIndex == -1) {
+            addRoom(roomInfo)
+        } else {
+            val existingRoom = rooms[existingRoomIndex]
+            if (existingRoom.roomPassword != roomInfo.roomPassword) {
+                rooms[existingRoomIndex] = roomInfo
+                adapter?.notifyItemChanged(existingRoomIndex)
+            }
+        }
     }
 
-    inner class RoomAdapter : BaseRoomAdapter() {
-        private val rooms = mutableListOf<RoomInfo>()
+    fun setAddNewRoomMode(enabled: Boolean) {
+        isAddNewRoom = enabled
+        adapter?.notifyDataSetChanged()
+    }
+
+    fun getRooms(): List<RoomInfo> = rooms.toList()
+
+    fun clearRooms() {
+        rooms.clear()
+        adapter?.notifyDataSetChanged()
+    }
+
+    inner class RoomAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         init {
-            messageLoading.loadRooms { callback ->
-                if (callback) {
-                    messageLoading.loadRoomsFromClient(false) {
-                        if (it) messageLoading.loadRoomsFromClient(true) {}
-                    }
-                } else {
-                    // TODO:
-                }
-            }
             rooms.addAll(listOf(
                 RoomInfo(
                     "1",
@@ -81,24 +97,6 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
             }
             roomPrefManager.getHiddenRooms().forEach { room ->
                 addRoomIfNotExists(room)
-            }
-        }
-
-        override fun addRoom(roomInfo: RoomInfo) {
-            rooms.add(roomInfo)
-            notifyItemInserted(rooms.size - 1)
-        }
-
-        fun addRoomIfNotExists(roomInfo: RoomInfo) {
-            val existingRoomIndex = rooms.indexOfFirst { it.id == roomInfo.id }
-            if (existingRoomIndex == -1) {
-                addRoom(roomInfo)
-            } else {
-                val existingRoom = rooms[existingRoomIndex]
-                if (existingRoom.roomPassword != roomInfo.roomPassword) {
-                    rooms[existingRoomIndex] = roomInfo
-                    notifyItemChanged(existingRoomIndex)
-                }
             }
         }
 
@@ -159,17 +157,19 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
             RoomMessage.text = room.roomMessage
 
             val isHideRoom = roomPrefManager.getHiddenRooms().any { it.id == room.id }
-            val path =  if (isHideRoom) {"HideRoomInfo"} else "RoomInfo"
 
             rootView.setOnClickListener {
                 if (isAddNewRoom) {
-                    messageLoading.detectRoomPassword(room) { callback ->
-                        if (callback) roomSelectedListener?.onRoomSelected(room)
+                    detectRoomPassword(room) { callback ->
+                        if (callback) {
+                            onRoomSelected(room)
+                        }
                     }
                 } else {
                     if (room.id.startsWith("${userData.userId}-")) {
                         showRoomDeleteDialog(room) { callback ->
                             if (callback) {
+                                val path = if (isHideRoom) "HideRoomInfo" else "RoomInfo"
                                 client.deleteData(
                                     path,
                                     room.id,
@@ -178,15 +178,14 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
                                             rooms.remove(room)
                                             notifyItemRemoved(holder.bindingAdapterPosition)
                                             if (isHideRoom) roomPrefManager.removeHiddenRoom(room.id)
-                                            context.ShowToast("删除成功")
+                                            context.ShowToast("已删除房间: ${room.id}")
+                                            onRoomDeleted(room)
                                         }
 
                                         override fun onFailure(error: String?) {
                                             context.ShowToast("貌似删除失败了🤔, 请尝试重新删除")
                                         }
                                     })
-                            } else {
-                                // TODO:
                             }
                         }
                     } else {
@@ -196,7 +195,8 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
                                     roomPrefManager.removeHiddenRoom(room.id)
                                     rooms.remove(room)
                                     notifyItemRemoved(holder.bindingAdapterPosition)
-                                    context.ShowToast("已离开隐藏房间")
+                                    context.ShowToast("已离开房间: ${room.id}")
+                                    onHiddenRoomLeft(room)
                                 }
                             }
                         } else {
@@ -208,6 +208,55 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
         }
 
         override fun getItemCount() = rooms.size
+    }
+
+    private fun detectRoomPassword(room: RoomInfo, callback: (Boolean) -> Unit) {
+        if (room.roomPassword.equals("Null")) {
+            callback(true)
+        } else {
+            val savedRoom = roomPrefManager.getRoomById(room.id)
+            if (savedRoom != null && savedRoom.roomPassword == room.roomPassword) {
+                context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
+                callback(true)
+            } else {
+                val view = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+                }
+                val input = TextInputEditText(context).apply {
+                    hint = "房间密码"
+                    inputType = TYPE_CLASS_TEXT or TYPE_TEXT_VARIATION_PASSWORD
+                    setTextColor(Color.BLACK)
+                    background = GradientDrawable().apply {
+                        shape = RECTANGLE
+                        setColor(Color.WHITE)
+                        cornerRadius = 8.dp.toFloat()
+                        setStroke(1, Color.argb(50, 0, 0, 0))
+                    }
+                    setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+                }
+                view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("请输入房间密码")
+                    .setView(view)
+                    .setPositiveButton("确认") { _, _ ->
+                        val password = input.text.toString()
+                        if (password == room.roomPassword) {
+                            roomPrefManager.saveRoom(room)
+                            context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
+                            callback(true)
+                        } else {
+                            context.ShowToast("错误的密码")
+                            callback(false)
+                        }
+                    }
+                    .setNegativeButton("取消") { _, _ ->
+                        callback(false)
+                    }
+                    .show()
+            }
+        }
     }
 
     private fun showRoomDeleteDialog(room: RoomInfo, callback: (confirmed: Boolean) -> Unit) {
@@ -225,8 +274,8 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
 
     private fun showHiddenRoomLeaveDialog(room: RoomInfo, callBack: (Boolean) -> Unit = {}) {
         MaterialAlertDialogBuilder(context)
-            .setTitle("离开隐藏房间?")
-            .setMessage("确定要离开隐藏房间: ${room.title}?\n这将从你的房间列表中移除该房间")
+            .setTitle("离开房间?")
+            .setMessage("确定要离开房间: ${room.title} (${room.id})?\n这将从你的房间列表中移除该房间")
             .setPositiveButton("离开") { _, _ ->
                 callBack(true)
             }
@@ -235,5 +284,4 @@ class RoomAdapterView(private val context: Context, private val userData: UserDa
             }
             .show()
     }
-
 }
