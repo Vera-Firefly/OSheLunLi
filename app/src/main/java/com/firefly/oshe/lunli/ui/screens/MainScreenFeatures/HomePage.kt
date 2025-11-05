@@ -1,4 +1,4 @@
-package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
+package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures
 
 import android.app.Activity
 import android.content.ClipData
@@ -6,7 +6,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.net.Uri
@@ -232,9 +234,9 @@ class HomePage(
         private fun createDefaultBitmap(): Bitmap {
             val size = 64.dp
             val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
+            val canvas = Canvas(bitmap)
 
-            val paint = android.graphics.Paint().apply {
+            val paint = Paint().apply {
                 color = context.getColor(R.color.gray)
                 isAntiAlias = true
             }

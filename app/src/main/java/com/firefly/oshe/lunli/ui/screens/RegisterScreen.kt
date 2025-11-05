@@ -64,7 +64,7 @@ class RegisterScreen(
         etUserName = interaction.createEditText("用户名").apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         }
-        etUserId = interaction.createEditText("用户ID") {
+        etUserId = interaction.createEditText("用户ID (7~8位)") {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_NORMAL
         }.apply {
             layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
@@ -135,7 +135,7 @@ class RegisterScreen(
 
                     if (existingUser != null) {
                         showError(2, "用户ID已存在")
-                        val error: String = "账户 $UserId 已存在, 请勿重复创建"
+                        val error = "账户 $UserId 已存在, 请勿重复创建"
                         context.ShowToast(error)
                     } else {
                         createUDFromClient(UserName, UserId, UserPWD, progressDialog)
@@ -185,7 +185,7 @@ class RegisterScreen(
                     (context as? Activity)?.runOnUiThread {
                         progressDialog.dismiss()
                         showError(2, "用户ID已存在")
-                        val error: String = "账户 $UserId 已存在, 请勿重复创建"
+                        val error = "账户 $UserId 已存在, 请勿重复创建"
                         context.ShowToast(error)
                     }
                 }

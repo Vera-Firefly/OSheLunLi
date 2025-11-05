@@ -1,4 +1,4 @@
-package com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures
+package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures
 
 import android.content.Context
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT

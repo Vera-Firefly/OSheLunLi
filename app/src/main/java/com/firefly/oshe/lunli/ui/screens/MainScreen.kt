@@ -11,15 +11,14 @@ import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textview.MaterialTextView
 
 import com.firefly.oshe.lunli.R
-import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
-import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.ChatRoom
-import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.Community
-import com.firefly.oshe.lunli.ui.screens.components.MainScreenFeatures.HomePage
+import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoom
+import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.Community
+import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.HomePage
 import com.firefly.oshe.lunli.utils.ImageUtils
 
 class MainScreen(
