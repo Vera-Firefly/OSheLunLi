@@ -480,11 +480,11 @@ class ChatRoom(
 
     private fun showRoomStatusSet(view: View) {
         PopupMenu(context, view).apply {
-            menu.add("新建Room").setOnMenuItemClickListener {
+            menu.add("新建房间").setOnMenuItemClickListener {
                 addRoomDialog()
                 true
             }
-            menu.add("删除Room").setOnMenuItemClickListener {
+            menu.add("删除/离开房间").setOnMenuItemClickListener {
                 context.ShowToast("单击房间以删除, 注意: 只能删除自己创建的房间, 否则你将被骗(PS: 这是AS推荐我加的一句)")
                 isAddNewRoom = false
                 roomStatus?.removeAllViews()
@@ -493,7 +493,7 @@ class ChatRoom(
                 }
                 true
             }
-            menu.add("加入隐藏房间").setOnMenuItemClickListener {
+            menu.add("加入房间").setOnMenuItemClickListener {
                 showJoinHiddenRoomDialog()
                 true
             }
@@ -507,7 +507,7 @@ class ChatRoom(
             setPadding(16.dp, 16.dp, 16.dp, 16.dp)
         }
         val input = TextInputEditText(context).apply {
-            hint = "隐藏房间ID"
+            hint = "房间ID"
             setTextColor(Color.BLACK)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
@@ -520,7 +520,7 @@ class ChatRoom(
         view.addView(input, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
         MaterialAlertDialogBuilder(context)
-            .setTitle("输入隐藏房间ID")
+            .setTitle("输入房间ID")
             .setView(view)
             .setPositiveButton("加入") { _, _ ->
                 val roomId = input.text.toString().trim()
@@ -854,6 +854,7 @@ class ChatRoom(
         val cachedMessages = userMessageCacheManager.loadCachedMessages(roomId)
         cachedMessages.forEach { message ->
             (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+            chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
         }
         loadRoomMessagesll(roomId)
     }

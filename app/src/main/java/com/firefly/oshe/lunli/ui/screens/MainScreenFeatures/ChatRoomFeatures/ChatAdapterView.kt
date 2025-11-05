@@ -26,6 +26,7 @@ import android.widget.LinearLayout.VERTICAL
 class ChatAdapterView {
 
     private val messages = mutableListOf<Message>()
+    private var adapter: ChatAdapter? = null
     private val base64 = Ciallo().ciallo // 注意: 禁止尝试打开这个类, 除非你想你的IDE爆炸!!!
     private val systemMessages = listOf(
         Message(
@@ -62,22 +63,12 @@ class ChatAdapterView {
         ))
 
     fun createAdapter(): ChatAdapter {
-        return ChatAdapter()
+        adapter = ChatAdapter()
+        return adapter!!
     }
 
     fun addMessage(message: Message) {
-        messages.add(message)
-    }
-
-    fun clearMessages() {
-        messages.clear()
-        messages.addAll(systemMessages)
-    }
-
-    fun addMessageIfNotExists(message: Message) {
-        if (messages.none { it.id == message.id }) {
-            addMessage(message)
-        }
+        adapter?.addMessage(message)
     }
 
     fun getMessages(): List<Message> = messages.toList()
@@ -88,24 +79,30 @@ class ChatAdapterView {
         TEXT
     }
 
-    inner class ChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    abstract inner class BaseChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        abstract fun addMessage(message: Message)
+    }
 
-        fun addMessage(message: Message) {
-            this@ChatAdapterView.addMessage(message)
+    inner class ChatAdapter : BaseChatAdapter() {
+
+        override fun addMessage(message: Message) {
+            messages.add(message)
             notifyItemInserted(messages.size - 1)
         }
 
         fun clearMessages() {
-            this@ChatAdapterView.clearMessages()
+            messages.clear()
+            messages.addAll(systemMessages)
             notifyDataSetChanged()
         }
 
         fun addMessageIfNotExists(message: Message) {
-            this@ChatAdapterView.addMessageIfNotExists(message)
-            notifyItemInserted(messages.size - 1)
+            if (messages.none { it.id == message.id} ) {
+                addMessage(message)
+            }
         }
 
-        fun getMessages(): List<Message> = this@ChatAdapterView.getMessages()
+        fun getMessages(): List<Message> = messages.toList()
 
         private fun detectContentType(content: String): ContentType {
             return when {
