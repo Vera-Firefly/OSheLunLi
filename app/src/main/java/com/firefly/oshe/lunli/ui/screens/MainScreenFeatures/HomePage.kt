@@ -145,7 +145,7 @@ class HomePage(
                 UserInformation(
                     userData.userId,
                     userData.userName,
-                    "DUMMY",
+                    userInformation.userImage,
                     "DUMMY"
                 )
             ))

@@ -197,6 +197,7 @@ class MainScreen(
                 .setAllCornerSizes(8f.dp)
                 .build()
             setOnClickListener {
+                previousTabIndex = selectedTabIndex
                 selectedTabIndex = 2
                 onUserAvatar = false
                 onBackToMain = true
@@ -245,6 +246,7 @@ class MainScreen(
                 .setAllCornerSizes(8f.dp)
                 .build()
             setOnClickListener {
+                previousTabIndex = selectedTabIndex
                 selectedTabIndex = 0
                 onUserAvatar = true
                 onBackToMain = false

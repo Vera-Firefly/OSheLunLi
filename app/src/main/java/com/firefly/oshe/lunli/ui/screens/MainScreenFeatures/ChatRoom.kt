@@ -97,6 +97,9 @@ class ChatRoom(
     private var pollingJob: Job? = null
     private var lastPollTime: Long = 0
 
+    private val processedMessageIds = mutableSetOf<String>()
+    private var lastMessageIdPollTime: Long = 0
+
     fun interface OnBackClickListener {
         fun onBackClicked()
     }
@@ -849,6 +852,7 @@ class ChatRoom(
     private fun loadRoomMessages(roomId: String) {
         unsubscribeFromMessages()
         currentRoomId = roomId
+        processedMessageIds.clear()
         (chatAdapter as? ChatAdapterView.ChatAdapter)?.clearMessages()
 
         val cachedMessages = userMessageCacheManager.loadCachedMessages(roomId)
@@ -919,27 +923,44 @@ class ChatRoom(
         pollingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && currentRoomId == roomId) {
                 try {
-                    val messages = SBClient.fetchMessages(roomId)
+                    val messageIds = SBClient.fetchMessageId(roomId)
 
-                    val newMessages = if (lastPollTime > 0) {
-                        messages.filter { dbMessage ->
-                            val messageTime = parseIso8601WithTimezone(dbMessage.created_at)
-                            messageTime > lastPollTime
-                            // it.created_at.toLongOrNull() ?: 0 > lastPollTime
+                    val newMessageIds = if (lastMessageIdPollTime > 0) {
+                        messageIds.filter { messageId ->
+                            val messageTime = parseIso8601WithTimezone(messageId.created_at)
+                            messageTime > lastMessageIdPollTime &&
+                                    !processedMessageIds.contains(messageId.id)
                         }
                     } else {
-                        emptyList()
+                        messageIds.filter {
+                            !processedMessageIds.contains(it.id)
+                        }
                     }
 
-                    if (newMessages.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            processNewMessages(newMessages)
+                    if (newMessageIds.isNotEmpty()) {
+                        val newMessages = mutableListOf<SBClient.Message>()
+
+                        newMessageIds.forEach { messageIdObj ->
+                            val messages = SBClient.fetchMessages(messageIdObj.id, roomId)
+                            newMessages.addAll(messages)
+
+                            processedMessageIds.add(messageIdObj.id)
                         }
 
-                        lastPollTime = newMessages.maxOf { dbMessage ->
-                            parseIso8601WithTimezone(dbMessage.created_at)
+                        if (newMessages.isNotEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                processNewMessages(newMessages)
+                            }
+
+                            lastMessageIdPollTime = newMessageIds.maxOf {
+                                parseIso8601WithTimezone(it.created_at)
+                            }
+                            lastPollTime = newMessages.maxOf {
+                                parseIso8601WithTimezone(it.created_at)
+                            }
                         }
                     } else {
+                        lastMessageIdPollTime = System.currentTimeMillis()
                         lastPollTime = System.currentTimeMillis()
                     }
 
@@ -1000,35 +1021,50 @@ class ChatRoom(
 
     private suspend fun loadExistingMessages(roomId: String) {
         try {
-            val messages = withContext(Dispatchers.IO) {
-                SBClient.fetchMessages(roomId)
+            val messageIds = withContext(Dispatchers.IO) {
+                SBClient.fetchMessageId(roomId)
             }
 
-            /**
-             * 轮询时间戳
-             */
-            if (messages.isNotEmpty()) {
-                lastPollTime = messages.maxOf { dbMessage ->
-                    parseIso8601WithTimezone(dbMessage.created_at)
+            processedMessageIds.clear()
+
+            if (messageIds.isNotEmpty()) {
+                lastMessageIdPollTime = messageIds.maxOf {
+                    parseIso8601WithTimezone(it.created_at)
+                }
+
+                val allMessages = withContext(Dispatchers.IO) {
+                    SBClient.fetchMessages(roomId)
+                }
+
+                lastPollTime = if (allMessages.isNotEmpty()) {
+                    allMessages.maxOf { parseIso8601WithTimezone(it.created_at) }
+                } else {
+                    System.currentTimeMillis()
+                }
+
+                messageIds.forEach { messageId ->
+                    processedMessageIds.add(messageId.id)
+                }
+
+                allMessages.forEach { dbMessage ->
+                    val sender = getUserInf(dbMessage.user_id)
+                    val message = Message(
+                        dbMessage.id,
+                        "${sender.userName} (${dbMessage.user_id})",
+                        sender.userImage,
+                        dbMessage.content
+                    )
+                    if (currentRoomId == roomId) {
+                        (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
             } else {
+                lastMessageIdPollTime = System.currentTimeMillis()
                 lastPollTime = System.currentTimeMillis()
-            }
-
-            messages.forEach { dbMessage ->
-                val sender = getUserInf(dbMessage.user_id)
-                val message = Message(
-                    dbMessage.id,
-                    "${sender.userName} (${dbMessage.user_id})",
-                    sender.userImage,
-                    dbMessage.content
-                )
-                if (currentRoomId == roomId) {
-                    (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
-                }
-            }
-            withContext(Dispatchers.Main) {
-                chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
@@ -1044,6 +1080,8 @@ class ChatRoom(
         pollingJob?.cancel()
         pollingJob = null
         lastPollTime = 0
+        lastMessageIdPollTime = 0
+        processedMessageIds.clear()
 
         /**
          * 取消订阅

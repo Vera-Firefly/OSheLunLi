@@ -61,7 +61,7 @@ android {
         applicationId = appPackageName
         minSdk = 29
         versionCode = 105
-        versionName = "1.0.5-devel"
+        versionName = "1.0.5"
         
         vectorDrawables { 
             useSupportLibrary = true

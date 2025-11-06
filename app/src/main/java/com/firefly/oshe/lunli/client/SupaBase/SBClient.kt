@@ -103,7 +103,10 @@ object SBClient {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 client.postgrest["messages"].insert(
-                    NewMessage(id = messageId, room_id = roomId, user_id = userId, content = content)
+                    NewMessage(messageId, roomId, userId, content)
+                )
+                client.postgrest["messageid"].insert(
+                    NewMessageId(messageId, roomId)
                 )
                 withContext(Dispatchers.Main) {
                     callback(true)
@@ -114,6 +117,41 @@ object SBClient {
                     callback(false)
                 }
                 e.printStackTrace()
+            }
+        }
+    }
+
+    suspend fun fetchMessageId(roomId: String): List<MessageId> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("messageid")
+                    .select {
+                        filter {
+                            eq("room_id", roomId)
+                        }
+                        order("created_at", Order.ASCENDING)
+                    }
+                    .decodeList<MessageId>()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    suspend fun fetchMessages(messageId: String, roomId: String): List<Message> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("messages")
+                    .select {
+                        filter {
+                            eq("id", messageId)
+                            eq("room_id", roomId)
+                        }
+                        order("created_at", Order.ASCENDING)
+                    }
+                    .decodeList<Message>()
+            } catch (e: Exception) {
+                emptyList()
             }
         }
     }
@@ -184,6 +222,19 @@ object SBClient {
         val room_id: String,
         val user_id: String,
         val content: String,
+        val created_at: String
+    )
+
+    @Serializable
+    data class NewMessageId(
+        val id: String,
+        val room_id: String
+    )
+
+    @Serializable
+    data class MessageId(
+        val id: String,
+        val room_id: String,
         val created_at: String
     )
 
