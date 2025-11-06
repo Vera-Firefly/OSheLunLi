@@ -39,7 +39,7 @@ class MainScreen(
     private var previousTabIndex = 0
     private var currentTabView: View? = null
 
-    private var userInformation = UserInformationPref(context).getInformation(userData.userId)
+    private var userInformation = UserInformation()
 
     private var onUserAvatar: Boolean = true
         set(value) {
@@ -120,10 +120,11 @@ class MainScreen(
     }
 
     private fun setupHomePage() {
+        userInformation = UserInformationPref(context).getInformation(userData.userId)!! // 我是天才！
         homePageContent = HomePage(
             context,
             userData,
-            UserInformation(userData.userId, userData.userName)
+            userInformation
         ).apply {
             setOnSignOutListener {
                 post {
@@ -137,7 +138,7 @@ class MainScreen(
             }
             setOnUserImageChangeListener {
                 post {
-                    userInformation = UserInformationPref(context).getInformation(userData.userId)
+                    userInformation = UserInformationPref(context).getInformation(userData.userId)!!
                     val image = userInformation?.let { ImageUtils.base64ToBitmap(it.userImage) }
                     if (image != null) {
                         userImage.setImageBitmap(image)

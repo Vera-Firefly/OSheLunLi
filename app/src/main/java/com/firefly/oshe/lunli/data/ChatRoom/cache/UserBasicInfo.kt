@@ -8,7 +8,7 @@ data class UserBasicInfo(
     val lastUpdateTime: Long = System.currentTimeMillis()
 ) {
     fun isExpired(): Boolean {
-        val sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000L
+        val sevenDaysInMillis = 24 * 60 * 60 * 1000L // 1天更新一次
         return System.currentTimeMillis() - lastUpdateTime > sevenDaysInMillis
     }
 

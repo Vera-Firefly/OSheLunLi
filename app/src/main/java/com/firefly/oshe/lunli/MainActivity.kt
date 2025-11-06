@@ -204,6 +204,7 @@ class MainActivity : Activity() {
         }
     }
 
+    // 背景选择, 暂时不启用
     fun switchToCustomBackground(drawable: android.graphics.drawable.Drawable) {
         backgroundManager.setCustomImageBackground(container, drawable)
     }
@@ -357,8 +358,8 @@ class MainActivity : Activity() {
     // 注册界面事件处理
     fun showRegisterScreen(anim: Int) {
         val screen = RegisterScreen(
-            context = this,
-            onRegisterSuccess = { name, id, pwd, image ->
+            this,
+            { name, id, pwd, image ->
                 currentUser = UserData(id, name, pwd)
                 val inf = UserInformation(
                     currentUser.userId,
@@ -371,7 +372,7 @@ class MainActivity : Activity() {
                 UserInformationPref(this).saveInformation(inf)
                 showMainScreen(1)
             },
-            onCancelRegister = { showLoginScreen(4) }
+            { showLoginScreen(4) }
         )
         switchScreen(screen, anim)
     }

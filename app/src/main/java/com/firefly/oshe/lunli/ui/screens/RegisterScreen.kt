@@ -200,11 +200,7 @@ class RegisterScreen(
 
     private fun createUDFromClient(UserName: String, UserId: String, UserPWD: String, progressDialog: AlertDialog) {
         client = Client(context)
-        val userData = UserData(
-            userId = UserId,
-            userName = UserName,
-            password = UserPWD
-        )
+        val userData = UserData(UserId, UserName, UserPWD)
         val userMap = mapOf(UserId to userData)
         val message = try {
             Gson().toJson(userMap)
