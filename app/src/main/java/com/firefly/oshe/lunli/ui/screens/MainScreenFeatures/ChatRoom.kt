@@ -28,7 +28,7 @@ import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
-import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomPrefManager
+import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
@@ -83,8 +83,8 @@ class ChatRoom(
         MessageCacheManager(context, userData.userId)
     }
 
-    private val roomPrefManager by lazy {
-        RoomPrefManager(context, userData.userId)
+    private val roomCacheManager by lazy {
+        RoomCacheManager(context, userData.userId)
     }
 
     private val interaction by lazy {
@@ -153,11 +153,11 @@ class ChatRoom(
         }
 
         roomAdapterView = RoomAdapterView(
-            context = context,
-            userData = userData,
-            roomPrefManager = roomPrefManager,
-            client = Client(context),
-            onRoomSelected = { room ->
+            context,
+            userData,
+            roomCacheManager,
+            Client(context),
+            { room ->
                 currentRoomId = room.id
                 mainView.removeAllViews()
                 mainView.addView(chatRoom)
@@ -165,11 +165,11 @@ class ChatRoom(
                 addExitRoom(room)
                 roomSelectedListener?.onRoomSelected()
             },
-            onRoomDeleted = { room ->
-                // 留着有用
+            { room ->
+                // 留着有用?
             },
-            onHiddenRoomLeft = { room ->
-                // 留着有用
+            { room ->
+                // 留着有用?
             }
         )
 
@@ -540,7 +540,7 @@ class ChatRoom(
                 content?.let { roomJson ->
                     try {
                         val roomInfo = parseRoomInfo(roomJson)
-                        roomPrefManager.saveHiddenRoom(roomInfo)
+                        roomCacheManager.saveHiddenRoom(roomInfo)
                         roomAdapterView.addRoomIfNotExists(roomInfo)
                         context.ShowToast("已加入房间: $roomId")
                     } catch (e: Exception) {
@@ -653,7 +653,7 @@ class ChatRoom(
                         SBClient.createRoom(newRoom.id)
 
                         if (isHiddenRoom) {
-                            roomPrefManager.saveHiddenRoom(newRoom)
+                            roomCacheManager.saveHiddenRoom(newRoom)
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("RoomID", newRoom.id)
                             clipboard.setPrimaryClip(clip)
@@ -796,26 +796,26 @@ class ChatRoom(
                 val roomInfo = parseRoomInfo(roomJson)
                 serverRoomIds.add(roomInfo.id)
 
-                val localLockedRoom = roomPrefManager.getRoomById(roomInfo.id)
-                val localHideRoom = roomPrefManager.getRoomById(roomInfo.id)
+                val localLockedRoom = roomCacheManager.getRoomById(roomInfo.id)
+                val localHideRoom = roomCacheManager.getRoomById(roomInfo.id)
                 if (localLockedRoom != null && localLockedRoom.roomPassword != roomInfo.roomPassword) {
-                    roomPrefManager.removeSavedRoom(roomInfo.id)
+                    roomCacheManager.removeSavedRoom(roomInfo.id)
                     context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
                 }
 
                 if (localHideRoom != null && localHideRoom.roomPassword != roomInfo.roomPassword) {
-                    roomPrefManager.removeHiddenRoom(roomInfo.id)
+                    roomCacheManager.removeHiddenRoom(roomInfo.id)
                     context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
                 }
 
                 if (path != "HideRoomInfo") roomAdapterView.addRoomIfNotExists(roomInfo)
             }
 
-            val allLocalRooms = roomPrefManager.getSavedRooms() + roomPrefManager.getHiddenRooms()
+            val allLocalRooms = roomCacheManager.getSavedRooms() + roomCacheManager.getHiddenRooms()
             allLocalRooms.forEach { localRoom ->
                 if (!serverRoomIds.contains(localRoom.id) &&
-                    !roomPrefManager.getHiddenRooms().any { it.id == localRoom.id }) {
-                    roomPrefManager.removeSavedRoom(localRoom.id)
+                    !roomCacheManager.getHiddenRooms().any { it.id == localRoom.id }) {
+                    roomCacheManager.removeSavedRoom(localRoom.id)
                 }
             }
 

@@ -11,7 +11,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
-import android.net.Uri
 import android.text.InputType
 import android.util.Log
 import android.view.Gravity
@@ -23,16 +22,11 @@ import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
-import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
-import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.R
-import com.firefly.oshe.lunli.Tools
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
@@ -47,7 +41,6 @@ import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.ImageUtils
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText

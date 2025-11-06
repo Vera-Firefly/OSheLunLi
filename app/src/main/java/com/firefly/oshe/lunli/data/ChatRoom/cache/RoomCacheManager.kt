@@ -6,7 +6,7 @@ import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
 import org.json.JSONArray
 import org.json.JSONObject
 
-class RoomPrefManager(private val context: Context, private val userId: String) {
+class RoomCacheManager(private val context: Context, private val userId: String) {
 
     companion object {
         private const val KEY_SAVED_ROOMS = "saved_rooms"

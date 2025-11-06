@@ -20,7 +20,7 @@ import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
-import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomPrefManager
+import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomCacheManager
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.dp
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -30,7 +30,7 @@ import kotlin.collections.mutableListOf
 class RoomAdapterView(
     private val context: Context,
     private val userData: UserData,
-    private val roomPrefManager: RoomPrefManager,
+    private val roomCacheManager: RoomCacheManager,
     private val client: Client,
     private val onRoomSelected: (RoomInfo) -> Unit,
     private val onRoomDeleted: (RoomInfo) -> Unit,
@@ -92,10 +92,10 @@ class RoomAdapterView(
         }
 
         private fun loadLocalRooms() {
-            roomPrefManager.getSavedRooms().forEach { room ->
+            roomCacheManager.getSavedRooms().forEach { room ->
                 addRoomIfNotExists(room)
             }
-            roomPrefManager.getHiddenRooms().forEach { room ->
+            roomCacheManager.getHiddenRooms().forEach { room ->
                 addRoomIfNotExists(room)
             }
         }
@@ -156,7 +156,7 @@ class RoomAdapterView(
             RoomCreator.text = "创建者: ${room.creator}"
             RoomMessage.text = room.roomMessage
 
-            val isHideRoom = roomPrefManager.getHiddenRooms().any { it.id == room.id }
+            val isHideRoom = roomCacheManager.getHiddenRooms().any { it.id == room.id }
 
             rootView.setOnClickListener {
                 if (isAddNewRoom) {
@@ -177,7 +177,7 @@ class RoomAdapterView(
                                         override fun onSuccess(content: String?) {
                                             rooms.remove(room)
                                             notifyItemRemoved(holder.bindingAdapterPosition)
-                                            if (isHideRoom) roomPrefManager.removeHiddenRoom(room.id)
+                                            if (isHideRoom) roomCacheManager.removeHiddenRoom(room.id)
                                             context.ShowToast("已删除房间: ${room.id}")
                                             onRoomDeleted(room)
                                         }
@@ -192,7 +192,7 @@ class RoomAdapterView(
                         if (isHideRoom) {
                             showHiddenRoomLeaveDialog(room) { callback ->
                                 if (callback) {
-                                    roomPrefManager.removeHiddenRoom(room.id)
+                                    roomCacheManager.removeHiddenRoom(room.id)
                                     rooms.remove(room)
                                     notifyItemRemoved(holder.bindingAdapterPosition)
                                     context.ShowToast("已离开房间: ${room.id}")
@@ -214,7 +214,7 @@ class RoomAdapterView(
         if (room.roomPassword.equals("Null")) {
             callback(true)
         } else {
-            val savedRoom = roomPrefManager.getRoomById(room.id)
+            val savedRoom = roomCacheManager.getRoomById(room.id)
             if (savedRoom != null && savedRoom.roomPassword == room.roomPassword) {
                 context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
                 callback(true)
@@ -243,7 +243,7 @@ class RoomAdapterView(
                     .setPositiveButton("确认") { _, _ ->
                         val password = input.text.toString()
                         if (password == room.roomPassword) {
-                            roomPrefManager.saveRoom(room)
+                            roomCacheManager.saveRoom(room)
                             context.ShowToast("Hello!\n${userData.userName} (${userData.userId})")
                             callback(true)
                         } else {
