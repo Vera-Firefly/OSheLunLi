@@ -1,5 +1,7 @@
 package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -17,6 +19,7 @@ import com.firefly.oshe.lunli.utils.Ciallo
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.android.material.imageview.ShapeableImageView
 import android.text.method.LinkMovementMethod
+import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout.HORIZONTAL
@@ -73,6 +76,12 @@ class ChatAdapterView {
     }
 
     fun getMessages(): List<Message> = messages.toList()
+
+    private fun ImagePreview(context: Context, bitmap: Bitmap, view: View) {
+        val cropDialog = CropDialog(context)
+        cropDialog.showCropDialog(bitmap, 2)
+        cropDialog.showAtLocation(view)
+    }
 
     private enum class ContentType {
         IMAGE_BASE64,
@@ -158,11 +167,7 @@ class ChatAdapterView {
                     adjustViewBounds = true
 
                     setOnClickListener {
-                        val cropDialog = CropDialog(context)
-                        cropDialog.showCropDialog(bitmap!!, 2) {
-
-                        }
-                        cropDialog.showAtLocation(this)
+                        ImagePreview(context, bitmap!!, this)
                     }
                 }
 
@@ -269,6 +274,9 @@ class ChatAdapterView {
                 message.senderImage != "NULL" -> {
                     val image = ImageUtils.base64ToBitmap(message.senderImage)
                     avatar.setImageBitmap(image)
+                    avatar.setOnClickListener {
+                        ImagePreview(contentContainer.context, image!!, rootView)
+                    }
                 }
                 else -> {
                     avatar.setImageResource(android.R.drawable.ic_menu_report_image)
