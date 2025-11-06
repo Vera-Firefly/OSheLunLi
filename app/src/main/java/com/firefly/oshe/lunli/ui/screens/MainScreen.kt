@@ -3,6 +3,8 @@ package com.firefly.oshe.lunli.ui.screens
 import android.content.Context
 import android.graphics.Color
 import android.view.*
+import android.view.Gravity.CENTER
+import android.view.Gravity.CENTER_VERTICAL
 import android.view.ViewGroup.LayoutParams.*
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.*
@@ -115,7 +117,7 @@ class MainScreen(
             context,
             userData.userId,
             userData,
-            UserInformation(userData.userId, userData.userName)
+            userInformation
         )
     }
 
@@ -303,6 +305,7 @@ class MainScreen(
         cePage = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
             orientation = VERTICAL
+            gravity = CENTER
 
             addView(cePageContent.createView())
         }

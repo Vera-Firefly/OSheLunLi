@@ -190,12 +190,6 @@ class CropUtils @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (currentCropType == CropType.FULL_SCREEN) {
-            scaleGestureDetector.onTouchEvent(event)
-            gestureDetector.onTouchEvent(event)
-            return true
-        }
-
         scaleGestureDetector.onTouchEvent(event)
         gestureDetector.onTouchEvent(event)
 
@@ -204,9 +198,15 @@ class CropUtils @JvmOverloads constructor(
                 lastTouchX = event.x
                 lastTouchY = event.y
 
-                isResizing = isInCornerArea(event.x, event.y)
-                isDragging = !isResizing && cropRect.contains(event.x, event.y)
-                isMovingImage = !isResizing && !isDragging
+                if (currentCropType == CropType.FULL_SCREEN) {
+                    isMovingImage = true
+                    isResizing = false
+                    isDragging = false
+                } else {
+                    isResizing = isInCornerArea(event.x, event.y)
+                    isDragging = !isResizing && cropRect.contains(event.x, event.y)
+                    isMovingImage = !isResizing && !isDragging
+                }
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!scaleGestureDetector.isInProgress) {

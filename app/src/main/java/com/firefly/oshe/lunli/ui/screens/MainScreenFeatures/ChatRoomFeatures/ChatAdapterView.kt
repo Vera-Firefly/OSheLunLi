@@ -22,6 +22,7 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
+import com.firefly.oshe.lunli.ui.dialog.CropDialog
 
 class ChatAdapterView {
 
@@ -157,7 +158,11 @@ class ChatAdapterView {
                     adjustViewBounds = true
 
                     setOnClickListener {
-                        // TODO
+                        val cropDialog = CropDialog(context)
+                        cropDialog.showCropDialog(bitmap!!, 2) {
+
+                        }
+                        cropDialog.showAtLocation(this)
                     }
                 }
 

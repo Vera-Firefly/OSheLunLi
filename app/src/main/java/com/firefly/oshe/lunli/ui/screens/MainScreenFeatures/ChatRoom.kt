@@ -643,11 +643,11 @@ class ChatRoom(
                 }
 
                 val newRoom = RoomInfo(
-                    id = "${userData.userId}-${System.currentTimeMillis()}",
-                    title = title,
-                    creator = userData.userName + " (${userData.userId})",
-                    roomMessage = roomMessage,
-                    roomPassword = roomPassword.takeIf { it.isNotBlank() } ?: "Null"
+                    "${userData.userId}-${System.currentTimeMillis()}",
+                    title,
+                    userData.userName + " (${userData.userId})",
+                    roomMessage,
+                    roomPassword.takeIf { it.isNotBlank() } ?: "Null"
                 )
 
                 uploadRoomToClient(isHiddenRoom, newRoom, object : Client.ResultCallback {
@@ -832,11 +832,11 @@ class ChatRoom(
     private fun parseRoomInfo(json: String): RoomInfo {
         val obj = JSONObject(json)
         return RoomInfo(
-            id = obj.optString("id", ""),
-            title = obj.optString("title", ""),
-            creator = obj.optString("creator", ""),
-            roomMessage = obj.optString("roomMessage", ""),
-            roomPassword = obj.optString("roomPassword", "")
+            obj.optString("id", ""),
+            obj.optString("title", ""),
+            obj.optString("creator", ""),
+            obj.optString("roomMessage", ""),
+            obj.optString("roomPassword", "")
         )
     }
 
