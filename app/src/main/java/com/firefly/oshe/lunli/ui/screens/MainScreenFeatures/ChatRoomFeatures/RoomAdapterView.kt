@@ -159,7 +159,7 @@ class RoomAdapterView(
             RoomMessage.text = room.roomMessage
 
             CoroutineScope(Dispatchers.Main).launch {
-                val isHideRoom = messageCacheManager.getRoomsByVisibility(false).any { it.id == room.id }
+                val isHideRoom = messageCacheManager.getRoomsByVisibility(true).any { it.id == room.id }
 
                 rootView.setOnClickListener {
                     if (isAddNewRoom) {
