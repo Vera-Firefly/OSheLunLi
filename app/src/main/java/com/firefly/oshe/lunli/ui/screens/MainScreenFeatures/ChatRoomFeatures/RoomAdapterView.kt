@@ -180,9 +180,7 @@ class RoomAdapterView(
                                             override fun onSuccess(content: String?) {
                                                 rooms.remove(room)
                                                 notifyItemRemoved(holder.bindingAdapterPosition)
-                                                if (isHideRoom) CoroutineScope(Dispatchers.IO).launch {
-                                                    messageCacheManager.deleteRoom(room.id)
-                                                }
+                                                if (isHideRoom) launch { messageCacheManager.deleteRoom(room.id) }
                                                 context.ShowToast("已删除房间: ${room.id}")
                                                 onRoomDeleted(room)
                                             }

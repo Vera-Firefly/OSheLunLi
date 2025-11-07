@@ -145,27 +145,40 @@ private class ChatData {
 
         companion object {
             @Volatile
-            private var INSTANCE: ChatDataBase? = null
+            private var INSTANCES: MutableMap<String, ChatDataBase> = mutableMapOf()
 
             fun getInstance(context: Context, userId: String): ChatDataBase {
-                return INSTANCE ?: synchronized(this) {
-                    val instance = Room.databaseBuilder(
-                        context.applicationContext,
-                        ChatDataBase::class.java,
-                        "chat_database_$userId.db"
-                    )
-                        .setQueryExecutor(Executors.newSingleThreadExecutor())
-                        .addCallback(
-                            object : RoomDatabase.Callback() {
-                                override fun onCreate(connection: SQLiteConnection) {
-                                    super.onCreate(connection)
-                                }
-                            }
-                        )
-                        .build()
-                    INSTANCE = instance
-                    instance
+                return INSTANCES[userId] ?: synchronized(this) {
+                    INSTANCES[userId] ?: createInstance(context, userId).also { instance ->
+                        INSTANCES[userId] = instance
+                    }
                 }
+            }
+
+            private fun createInstance(context: Context, userId: String): ChatDataBase {
+                return Room.databaseBuilder(
+                    context.applicationContext,
+                    ChatDataBase::class.java,
+                    "chat_database_$userId.db"
+                )
+                    .setQueryExecutor(Executors.newSingleThreadExecutor())
+                    .addCallback(
+                        object : RoomDatabase.Callback() {
+                            override fun onCreate(connection: SQLiteConnection) {
+                                super.onCreate(connection)
+                            }
+                        }
+                    )
+                    .build()
+            }
+
+            fun removeInstance(userId: String) {
+                INSTANCES.remove(userId)?.close()
+            }
+
+            fun clearAllInstances() {
+                INSTANCES.values.forEach { it.close() }
+                INSTANCES.clear()
             }
         }
     }
