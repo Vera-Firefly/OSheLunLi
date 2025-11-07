@@ -1,7 +1,6 @@
 package com.firefly.oshe.lunli.data.ChatRoom.cache
 
 import android.content.Context
-import android.util.Log
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
@@ -13,6 +12,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Update
 import androidx.sqlite.SQLiteConnection
 import com.firefly.oshe.lunli.data.ChatRoom.Message
 import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
@@ -109,8 +109,23 @@ private class ChatData {
         @Query("DELETE FROM chat_rooms WHERE id = :roomId")
         suspend fun deleteRoom(roomId: String)
 
+        @Query("DELETE FROM chat_rooms WHERE id IN (:roomIds)")
+        suspend fun deleteRooms(roomIds: List<String>)
+
         @Query("DELETE FROM chat_rooms WHERE last_activity < :expireTime")
         suspend fun deleteInactiveRooms(expireTime: Long)
+
+        @Query("UPDATE chat_rooms SET title = :title, room_message = :roomMessage WHERE id = :roomId")
+        suspend fun updateRoomInfo(roomId: String, title: String, roomMessage: String)
+
+        @Query("UPDATE chat_rooms SET room_password = :password WHERE id = :roomId")
+        suspend fun updateRoomPassword(roomId: String, password: String)
+
+        @Query("UPDATE chat_rooms SET is_hidden = :isHidden WHERE id = :roomId")
+        suspend fun updateRoomVisibility(roomId: String, isHidden: Boolean)
+
+        @Update
+        suspend fun updateRoom(room: RoomInfoEntity)
 
         @Query("UPDATE chat_rooms SET last_activity = :timestamp WHERE id = :roomId")
         suspend fun updateRoomActivity(roomId: String, timestamp: Long)
@@ -158,11 +173,11 @@ private class ChatData {
 
 class MessageCacheManager(private val context: Context, private val userId: String) {
 
-    private val database: ChatData.ChatDataBase by lazy {
+    private val database by lazy {
         ChatData.ChatDataBase.getInstance(context, userId)
     }
 
-    private val chatDao: ChatData.ChatDao by lazy { database.chatDao() }
+    private val chatDao by lazy { database.chatDao() }
 
     companion object {
         private const val CACHE_DURATION = 30L * 24 * 60 * 60 * 1000
@@ -170,7 +185,6 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
         private const val BATCH_SIZE = 100
         private const val RECENT_MESSAGES_LIMIT = 500
     }
-
 
     suspend fun saveMessagesToCache(roomId: String, messages: List<Message>) {
         withContext(Dispatchers.IO) {
@@ -274,6 +288,135 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
                 }
                 chatDao.insertRooms(entities)
             } catch (e: Exception) { }
+        }
+    }
+
+    suspend fun updateRoomInfo(roomId: String, title: String, roomMessage: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                chatDao.updateRoomInfo(roomId, title, roomMessage)
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun updateRoomPassword(roomId: String, newPassword: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                chatDao.updateRoomPassword(roomId, newPassword)
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun updateRoomVisibility(roomId: String, isHidden: Boolean) {
+        withContext(Dispatchers.IO) {
+            try {
+                chatDao.updateRoomVisibility(roomId, isHidden)
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun updateRoom(roomInfo: RoomInfo, isHidden: Boolean = false) {
+        withContext(Dispatchers.IO) {
+            try {
+                val entity = ChatData.RoomInfoEntity(
+                    roomInfo.id,
+                    roomInfo.title,
+                    roomInfo.creator,
+                    roomInfo.roomMessage,
+                    roomInfo.roomPassword,
+                    isHidden,
+                    System.currentTimeMillis()
+                )
+                chatDao.updateRoom(entity)
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun saveOrUpdateRoom(roomInfo: RoomInfo, isHidden: Boolean = false) {
+        withContext(Dispatchers.IO) {
+            try {
+                val existingRoom = chatDao.getRoomById(roomInfo.id)
+                val entity = ChatData.RoomInfoEntity(
+                    roomInfo.id,
+                    roomInfo.title,
+                    roomInfo.creator,
+                    roomInfo.roomMessage,
+                    roomInfo.roomPassword,
+                    isHidden,
+                    System.currentTimeMillis(),
+                    existingRoom?.createdTime ?: System.currentTimeMillis()
+                )
+
+                if (existingRoom != null) {
+                    chatDao.updateRoom(entity)
+                } else {
+                    chatDao.insertRoom(entity)
+                }
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun saveOrUpdateRooms(rooms: List<RoomInfo>, isHidden: Boolean = false) {
+        withContext(Dispatchers.IO) {
+            try {
+                val existingRooms = chatDao.getAllRooms().associateBy { it.id }
+                val entities = rooms.map { roomInfo ->
+                    val existingRoom = existingRooms[roomInfo.id]
+                    ChatData.RoomInfoEntity(
+                        roomInfo.id,
+                        roomInfo.title,
+                        roomInfo.creator,
+                        roomInfo.roomMessage,
+                        roomInfo.roomPassword,
+                        isHidden,
+                        System.currentTimeMillis(),
+                        existingRoom?.createdTime ?: System.currentTimeMillis()
+                    )
+                }
+                chatDao.insertRooms(entities)
+            } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+
+    suspend fun deleteRoom(roomId: String, deleteMessages: Boolean = true): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (deleteMessages) {
+                    chatDao.deleteMessagesByRoom(roomId)
+                }
+                chatDao.deleteRoom(roomId)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    suspend fun deleteRooms(roomIds: List<String>, deleteMessages: Boolean = true): Int {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (deleteMessages) {
+                    roomIds.forEach { roomId ->
+                        chatDao.deleteMessagesByRoom(roomId)
+                    }
+                }
+                val deletedCount = chatDao.deleteRooms(roomIds)
+                deletedCount
+            } catch (e: Exception) {
+                0
+            } as Int
         }
     }
 

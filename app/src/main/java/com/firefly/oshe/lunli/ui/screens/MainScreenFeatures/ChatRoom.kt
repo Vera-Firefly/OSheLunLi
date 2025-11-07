@@ -28,7 +28,6 @@ import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.client.SupaBase.SBClient
 import com.firefly.oshe.lunli.data.ChatRoom.cache.MessageCacheManager
-import com.firefly.oshe.lunli.data.ChatRoom.cache.RoomCacheManager
 import com.firefly.oshe.lunli.data.ChatRoom.cache.SeparateUserCacheManager
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
@@ -79,12 +78,8 @@ class ChatRoom(
     private val userCacheManager by lazy {
         SeparateUserCacheManager(context)
     }
-    private val chatCacheManager by lazy {
+    private val messageCacheManager by lazy {
         MessageCacheManager(context, userData.userId)
-    }
-
-    private val roomCacheManager by lazy {
-        RoomCacheManager(context, userData.userId)
     }
 
     private val interaction by lazy {
@@ -158,7 +153,7 @@ class ChatRoom(
         roomAdapterView = RoomAdapterView(
             context,
             userData,
-            roomCacheManager,
+            messageCacheManager,
             Client(context),
             { room ->
                 currentRoomId = room.id
@@ -196,7 +191,7 @@ class ChatRoom(
                     unsubscribeFromMessages()
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
                         CoroutineScope(Dispatchers.IO).launch {
-                            chatCacheManager.saveMessagesToCache(roomInfo.id, messages)
+                            messageCacheManager.saveMessagesToCache(roomInfo.id, messages)
                         }
                     }
                     backClickListener?.onBackClicked()
@@ -545,7 +540,9 @@ class ChatRoom(
                 content?.let { roomJson ->
                     try {
                         val roomInfo = parseRoomInfo(roomJson)
-                        roomCacheManager.saveHiddenRoom(roomInfo)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            messageCacheManager.saveRoom(roomInfo, true)
+                        }
                         roomAdapterView.addRoomIfNotExists(roomInfo)
                         context.ShowToast("已加入房间: $roomId")
                     } catch (e: Exception) {
@@ -658,7 +655,9 @@ class ChatRoom(
                         SBClient.createRoom(newRoom.id)
 
                         if (isHiddenRoom) {
-                            roomCacheManager.saveHiddenRoom(newRoom)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                messageCacheManager.saveRoom(newRoom, true)
+                            }
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("RoomID", newRoom.id)
                             clipboard.setPrimaryClip(clip)
@@ -801,26 +800,25 @@ class ChatRoom(
                 val roomInfo = parseRoomInfo(roomJson)
                 serverRoomIds.add(roomInfo.id)
 
-                val localLockedRoom = roomCacheManager.getRoomById(roomInfo.id)
-                val localHideRoom = roomCacheManager.getRoomById(roomInfo.id)
-                if (localLockedRoom != null && localLockedRoom.roomPassword != roomInfo.roomPassword) {
-                    roomCacheManager.removeSavedRoom(roomInfo.id)
-                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
-                }
-
-                if (localHideRoom != null && localHideRoom.roomPassword != roomInfo.roomPassword) {
-                    roomCacheManager.removeHiddenRoom(roomInfo.id)
-                    context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                CoroutineScope(Dispatchers.IO).launch {
+                    val localRoom = messageCacheManager.getRoomById(roomInfo.id)
+                    if (localRoom != null && localRoom.roomPassword != roomInfo.roomPassword) {
+                        messageCacheManager.updateRoomPassword(roomInfo.id, roomInfo.roomPassword)
+                        context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+                    }
                 }
 
                 if (path != "HideRoomInfo") roomAdapterView.addRoomIfNotExists(roomInfo)
             }
 
-            val allLocalRooms = roomCacheManager.getSavedRooms() + roomCacheManager.getHiddenRooms()
-            allLocalRooms.forEach { localRoom ->
-                if (!serverRoomIds.contains(localRoom.id) &&
-                    !roomCacheManager.getHiddenRooms().any { it.id == localRoom.id }) {
-                    roomCacheManager.removeSavedRoom(localRoom.id)
+            CoroutineScope(Dispatchers.IO).launch {
+                val allLocalRooms = messageCacheManager.getAllRooms()
+                allLocalRooms.forEach { localRoom ->
+                    if (!serverRoomIds.contains(localRoom.id) &&
+                        !allLocalRooms.any { it.id == localRoom.id }
+                    ) {
+                        messageCacheManager.updateRoom(localRoom)
+                    }
                 }
             }
 
@@ -858,7 +856,7 @@ class ChatRoom(
         (chatAdapter as? ChatAdapterView.ChatAdapter)?.clearMessages()
 
         CoroutineScope(Dispatchers.IO).launch {
-            val cachedMessages = chatCacheManager.loadCachedMessages(roomId)
+            val cachedMessages = messageCacheManager.loadCachedMessages(roomId)
             CoroutineScope(Dispatchers.Main).launch {
                 cachedMessages.forEach { message ->
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
@@ -907,7 +905,7 @@ class ChatRoom(
                                 )
                             }
                             (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
-                                chatCacheManager.saveMessagesToCache(roomId, messages)
+                                messageCacheManager.saveMessagesToCache(roomId, messages)
                             }
                         }
                     }
@@ -1017,7 +1015,7 @@ class ChatRoom(
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
-                chatCacheManager.saveSingleMessage(roomId, message)
+                messageCacheManager.saveSingleMessage(roomId, message)
             }
         }
     }
