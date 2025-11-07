@@ -1012,9 +1012,12 @@ class ChatRoom(
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
 
+                /**
+                 * 我硬吃了几个OOM, 保存频率似乎太高了???
                 (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { allMessages ->
                     userMessageCacheManager.saveMessagesToCache(currentRoomId ?: return@let, allMessages)
                 }
+                 */
             }
         }
     }
