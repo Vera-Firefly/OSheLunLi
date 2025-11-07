@@ -79,7 +79,7 @@ class ChatRoom(
     private val userCacheManager by lazy {
         SeparateUserCacheManager(context)
     }
-    private val userMessageCacheManager by lazy {
+    private val chatCacheManager by lazy {
         MessageCacheManager(context, userData.userId)
     }
 
@@ -195,7 +195,9 @@ class ChatRoom(
                 setOnClickListener {
                     unsubscribeFromMessages()
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
-                        userMessageCacheManager.saveMessagesToCache(roomInfo.id, messages)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            chatCacheManager.saveMessagesToCache(roomInfo.id, messages)
+                        }
                     }
                     backClickListener?.onBackClicked()
                     mainView.removeAllViews()
@@ -855,10 +857,14 @@ class ChatRoom(
         processedMessageIds.clear()
         (chatAdapter as? ChatAdapterView.ChatAdapter)?.clearMessages()
 
-        val cachedMessages = userMessageCacheManager.loadCachedMessages(roomId)
-        cachedMessages.forEach { message ->
-            (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
-            chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+        CoroutineScope(Dispatchers.IO).launch {
+            val cachedMessages = chatCacheManager.loadCachedMessages(roomId)
+            CoroutineScope(Dispatchers.Main).launch {
+                cachedMessages.forEach { message ->
+                    (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                    chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
+                }
+            }
         }
         loadRoomMessagesll(roomId)
     }
@@ -901,7 +907,7 @@ class ChatRoom(
                                 )
                             }
                             (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { messages ->
-                                userMessageCacheManager.saveMessagesToCache(roomId, messages)
+                                chatCacheManager.saveMessagesToCache(roomId, messages)
                             }
                         }
                     }
@@ -949,7 +955,7 @@ class ChatRoom(
 
                         if (newMessages.isNotEmpty()) {
                             withContext(Dispatchers.Main) {
-                                processNewMessages(newMessages)
+                                processNewMessages(roomId, newMessages)
                             }
 
                             lastMessageIdPollTime = newMessageIds.maxOf {
@@ -997,7 +1003,7 @@ class ChatRoom(
         }
     }
 
-    private fun processNewMessages(messages: List<SBClient.Message>) {
+    private fun processNewMessages(roomId: String, messages: List<SBClient.Message>) {
         CoroutineScope(Dispatchers.IO).launch {
             messages.forEach { dbMessage ->
                 val sender = getUserInf(dbMessage.user_id)
@@ -1011,13 +1017,7 @@ class ChatRoom(
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
-
-                /**
-                 * 我硬吃了几个OOM, 保存频率似乎太高了???
-                (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.let { allMessages ->
-                    userMessageCacheManager.saveMessagesToCache(currentRoomId ?: return@let, allMessages)
-                }
-                 */
+                chatCacheManager.saveSingleMessage(roomId, message)
             }
         }
     }
@@ -1060,10 +1060,6 @@ class ChatRoom(
                     if (currentRoomId == roomId) {
                         (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     }
-                }
-
-                withContext(Dispatchers.Main) {
-                    chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
             } else {
                 lastMessageIdPollTime = System.currentTimeMillis()

@@ -41,6 +41,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 class InformationAdapterView(
@@ -123,14 +126,18 @@ class InformationAdapterView(
 
             interaction.createButton("清除缓存(当前账户)", R.color.gray) {
                 userCacheManager.clearUserCache(userData.userId)
-                userMessageCacheManager.clearAllMessagesCache()
+                CoroutineScope(Dispatchers.IO).launch {
+                    userMessageCacheManager.clearAllData()
+                }
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
 
             interaction.createButton("清除缓存", R.color.light_blue) {
                 userCacheManager.clearAllCache()
-                userMessageCacheManager.clearAllMessagesCache()
+                CoroutineScope(Dispatchers.IO).launch {
+                    userMessageCacheManager.clearAllData()
+                }
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }

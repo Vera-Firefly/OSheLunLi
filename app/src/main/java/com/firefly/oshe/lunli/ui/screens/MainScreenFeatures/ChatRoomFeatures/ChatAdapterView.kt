@@ -3,6 +3,8 @@ package com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -25,7 +27,13 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ChatAdapterView {
 
@@ -79,8 +87,41 @@ class ChatAdapterView {
 
     private fun ImagePreview(context: Context, bitmap: Bitmap, view: View) {
         val cropDialog = CropDialog(context)
-        cropDialog.showCropDialog(bitmap, 2)
+        cropDialog.setButtonText(confirm = "保存")
+        cropDialog.showCropDialog(bitmap, 2) {
+            saveImageToPictures(context, bitmap)
+        }
         cropDialog.showAtLocation(view)
+    }
+
+    private fun saveImageToPictures(context: Context, bitmap: Bitmap) {
+        Thread {
+            try {
+                val picturesDir = File("/sdcard/Pictures/OSheLunLi")
+                if (!picturesDir.exists()) {
+                    picturesDir.mkdirs()
+                }
+
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val fileName = "OSheLunLi.${timeStamp}.jpg"
+                val imageFile = File(picturesDir, fileName)
+
+                FileOutputStream(imageFile).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    outputStream.flush()
+                }
+
+                Handler(Looper.getMainLooper()).post {
+                    context.ShowToast("图片已保存到: ${imageFile.absolutePath}")
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    context.ShowToast("保存失败: ${e.message}")
+                }
+            }
+        }.start()
     }
 
     private enum class ContentType {

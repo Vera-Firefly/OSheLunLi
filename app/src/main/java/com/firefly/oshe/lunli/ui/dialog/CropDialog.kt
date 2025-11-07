@@ -26,6 +26,15 @@ class CropDialog(
     private lateinit var cropView: CropUtils
     private var onCropResult: ((Bitmap?) -> Unit)? = null
 
+    private var cancelButtonText = "取消"
+    private var confirmButtonText = "确认"
+
+    fun setButtonText(cancel: String = "取消", confirm: String = "确认"): CropDialog {
+        this.cancelButtonText = cancel
+        this.confirmButtonText = confirm
+        return this
+    }
+
     fun showCropDialog(bitmap: Bitmap, cropType: Int = -1, onCropResult: (Bitmap?) -> Unit = {}) {
         this.onCropResult = onCropResult
         val rootView = LinearLayout(context).apply {
@@ -54,7 +63,7 @@ class CropDialog(
         }
 
         createButton(
-            "取消",
+            cancelButtonText,
             R.color.red
         ) {
             popupWindow.dismiss()
@@ -65,7 +74,7 @@ class CropDialog(
         }.also { buttonLayout.addView(it) }
 
         createButton(
-            "确定",
+            confirmButtonText,
             R.color.light_blue
         ) {
             val croppedBitmap = cropView.cropImage()

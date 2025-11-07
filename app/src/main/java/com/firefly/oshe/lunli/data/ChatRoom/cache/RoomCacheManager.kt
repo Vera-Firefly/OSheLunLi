@@ -87,11 +87,11 @@ class RoomCacheManager(private val context: Context, private val userId: String)
             List(jsonArray.length()) { index ->
                 val jsonObject = jsonArray.getJSONObject(index)
                 RoomInfo(
-                    id = jsonObject.getString("id"),
-                    title = jsonObject.getString("title"),
-                    creator = jsonObject.getString("creator"),
-                    roomMessage = jsonObject.getString("roomMessage"),
-                    roomPassword = jsonObject.getString("roomPassword")
+                    jsonObject.getString("id"),
+                    jsonObject.getString("title"),
+                    jsonObject.getString("creator"),
+                    jsonObject.getString("roomMessage"),
+                    jsonObject.getString("roomPassword")
                 )
             }
         } catch (e: Exception) {

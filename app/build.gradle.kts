@@ -151,8 +151,13 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.exifinterface:exifinterface:1.3.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-livedata:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.recyclerview:recyclerview:1.2.1")
+    implementation("androidx.room:room-ktx:2.8.3")
+    implementation("androidx.room:room-runtime:2.8.3")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.transition:transition:1.4.1")
 
@@ -183,6 +188,7 @@ dependencies {
     }
     implementation("org.commonmark:commonmark:0.18.2")
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.18.2")
+    // implementation("org.jetbrains.kotlinx:kotlinx-coroutines:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation("org.json:json:20231013")
 
@@ -191,5 +197,10 @@ dependencies {
         "include" to listOf("*.aar")
     )))
 
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+
     kapt("com.github.bumptech.glide:compiler:4.13.2")
+    kapt("androidx.room:room-compiler:2.8.3")
 }
