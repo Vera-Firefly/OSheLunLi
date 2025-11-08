@@ -89,6 +89,7 @@ class ChatRoom(
 
     private var messageSubscription: Job? = null
     private var currentSubscription: Job? = null
+    private var lastPollingTimeZone: String = ""
 
     private var pollingJob: Job? = null
 
@@ -925,11 +926,13 @@ class ChatRoom(
 
     private fun startPollingMessages(roomId: String, sinceTimestamp: String = "") {
         unsubscribeFromMessages()
+        lastPollingTimeZone = sinceTimestamp
         pollingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && currentRoomId == roomId) {
                 try {
-                    val messageIds = SBClient.fetchMessageId(roomId, sinceTimestamp)
+                    val messageIds = SBClient.fetchMessageId(roomId, lastPollingTimeZone)
 
+                    println(lastPollingTimeZone)
                     if (messageIds.isNotEmpty()) {
                         val newMessages = mutableListOf<SBClient.Message>()
 
@@ -976,6 +979,7 @@ class ChatRoom(
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
+                lastPollingTimeZone = Iso8601Converter.toUtcZeroOffsetFormat(dbMessage.created_at)
                 messageCacheManager.saveSingleMessage(roomId, message, Iso8601Converter.toUtcZeroOffsetTimestamp(dbMessage.created_at))
             }
         }
@@ -1007,6 +1011,7 @@ class ChatRoom(
                         dbMessage.content,
                         dbMessage.created_at
                     )
+                    lastPollingTimeZone = Iso8601Converter.toUtcZeroOffsetFormat(dbMessage.created_at)
                     if (currentRoomId == roomId) {
                         withContext(Dispatchers.Main) {
                             (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
