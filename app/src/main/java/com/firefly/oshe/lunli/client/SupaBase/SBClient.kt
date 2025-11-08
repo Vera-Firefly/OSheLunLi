@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import okhttp3.Dispatcher
+import java.sql.Timestamp
 
 object SBClient {
     val client: SupabaseClient = createSupabaseClient(
@@ -121,13 +122,14 @@ object SBClient {
         }
     }
 
-    suspend fun fetchMessageId(roomId: String): List<MessageId> {
+    suspend fun fetchMessageId(roomId: String, timestamp: String = ""): List<MessageId> {
         return withContext(Dispatchers.IO) {
             try {
                 client.from("messageid")
                     .select {
                         filter {
                             eq("room_id", roomId)
+                            if (timestamp != "") gt("created_at", timestamp.replace("+0000", "+00:00"))
                         }
                         order("created_at", Order.ASCENDING)
                     }

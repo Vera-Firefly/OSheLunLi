@@ -34,6 +34,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 class ChatAdapterView {
 
@@ -71,7 +72,8 @@ class ChatAdapterView {
                     print("Hello World!")
                 ```
                 - 其它类型未实现, 后继会逐一实现
-                """.trimIndent()
+                """.trimIndent(),
+            "2024-11-11T12:00:00.836446+00:00"
         ))
 
     fun createAdapter(): ChatAdapter {

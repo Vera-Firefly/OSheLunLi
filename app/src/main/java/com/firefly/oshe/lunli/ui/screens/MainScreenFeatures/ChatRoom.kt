@@ -36,6 +36,7 @@ import com.firefly.oshe.lunli.ui.dialog.CropDialog
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.RoomAdapterView
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.ChatAdapterView
+import com.firefly.oshe.lunli.utils.Iso8601Converter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -90,10 +91,8 @@ class ChatRoom(
     private var currentSubscription: Job? = null
 
     private var pollingJob: Job? = null
-    private var lastPollTime: Long = 0
 
     private val processedMessageIds = mutableSetOf<String>()
-    private var lastMessageIdPollTime: Long = 0
 
     fun interface OnBackClickListener {
         fun onBackClicked()
@@ -318,7 +317,8 @@ class ChatRoom(
                     currentId,
                     userData.userName + " (" + userData.userId + ")",
                     image,
-                    message
+                    message,
+                    Iso8601Converter.nowAsUtcZeroOffset()
                 )
             )
             currentRoomId?.let { roomId ->
@@ -857,23 +857,23 @@ class ChatRoom(
 
         CoroutineScope(Dispatchers.IO).launch {
             val cachedMessages = messageCacheManager.loadCachedMessages(roomId)
+            val lastTimestamp = messageCacheManager.getLastMessageTime(roomId)
             CoroutineScope(Dispatchers.Main).launch {
                 cachedMessages.forEach { message ->
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
             }
-        }
-        loadRoomMessagesll(roomId)
-    }
 
-    private fun loadRoomMessagesll(roomId: String) {
-        unsubscribeFromMessages()
+            if (cachedMessages.isEmpty() || lastTimestamp == 0L) {
+                loadExistingMessages(roomId)
+                startPollingMessages(roomId)
+            }
+            else
+            {
+                startPollingMessages(roomId, Iso8601Converter.toUtcZeroOffsetFormat(lastTimestamp))
+            }
 
-        messageSubscription = CoroutineScope(Dispatchers.Main).launch {
-            loadExistingMessages(roomId)
-            // subscribeToMessages(roomId)
-            startPollingMessages(roomId)
         }
     }
 
@@ -891,7 +891,8 @@ class ChatRoom(
                                 message.id,
                                 "${sender.userName} (${message.user_id})",
                                 sender.userImage,
-                                message.content
+                                message.content,
+                                message.created_at
                             )
                         }
 
@@ -922,29 +923,17 @@ class ChatRoom(
         }
     }
 
-    private fun startPollingMessages(roomId: String) {
+    private fun startPollingMessages(roomId: String, sinceTimestamp: String = "") {
         unsubscribeFromMessages()
         pollingJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && currentRoomId == roomId) {
                 try {
-                    val messageIds = SBClient.fetchMessageId(roomId)
+                    val messageIds = SBClient.fetchMessageId(roomId, sinceTimestamp)
 
-                    val newMessageIds = if (lastMessageIdPollTime > 0) {
-                        messageIds.filter { messageId ->
-                            val messageTime = parseIso8601WithTimezone(messageId.created_at)
-                            messageTime > lastMessageIdPollTime &&
-                                    !processedMessageIds.contains(messageId.id)
-                        }
-                    } else {
-                        messageIds.filter {
-                            !processedMessageIds.contains(it.id)
-                        }
-                    }
-
-                    if (newMessageIds.isNotEmpty()) {
+                    if (messageIds.isNotEmpty()) {
                         val newMessages = mutableListOf<SBClient.Message>()
 
-                        newMessageIds.forEach { messageIdObj ->
+                        messageIds.forEach { messageIdObj ->
                             val messages = SBClient.fetchMessages(messageIdObj.id, roomId)
                             newMessages.addAll(messages)
 
@@ -955,17 +944,7 @@ class ChatRoom(
                             withContext(Dispatchers.Main) {
                                 processNewMessages(roomId, newMessages)
                             }
-
-                            lastMessageIdPollTime = newMessageIds.maxOf {
-                                parseIso8601WithTimezone(it.created_at)
-                            }
-                            lastPollTime = newMessages.maxOf {
-                                parseIso8601WithTimezone(it.created_at)
-                            }
                         }
-                    } else {
-                        lastMessageIdPollTime = System.currentTimeMillis()
-                        lastPollTime = System.currentTimeMillis()
                     }
 
                     delay(3000L)
@@ -979,28 +958,6 @@ class ChatRoom(
         }
     }
 
-    private fun parseIso8601WithTimezone(isoString: String): Long {
-        return try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                java.time.Instant.parse(isoString).toEpochMilli()
-            } else {
-                val pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX"
-                val formatter = SimpleDateFormat(pattern, Locale.getDefault())
-                formatter.timeZone = TimeZone.getTimeZone("UTC")
-                formatter.parse(isoString)?.time ?: 0L
-            }
-        } catch (e: Exception) {
-            try {
-                val simplifiedString = isoString.substringBefore(".") + "Z"
-                val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
-                simpleDateFormat.timeZone = TimeZone.getTimeZone("UTC")
-                simpleDateFormat.parse(simplifiedString)?.time ?: 0L
-            } catch (e2: Exception) {
-                0L
-            }
-        }
-    }
-
     private fun processNewMessages(roomId: String, messages: List<SBClient.Message>) {
         CoroutineScope(Dispatchers.IO).launch {
             messages.forEach { dbMessage ->
@@ -1009,13 +966,14 @@ class ChatRoom(
                     dbMessage.id,
                     "${sender.userName} (${dbMessage.user_id})",
                     sender.userImage,
-                    dbMessage.content
+                    dbMessage.content,
+                     dbMessage.created_at
                 )
                 withContext(Dispatchers.Main) {
                     (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
                     chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
                 }
-                messageCacheManager.saveSingleMessage(roomId, message)
+                messageCacheManager.saveSingleMessage(roomId, message, Iso8601Converter.toUtcZeroOffsetTimestamp(dbMessage.created_at))
             }
         }
     }
@@ -1029,18 +987,8 @@ class ChatRoom(
             processedMessageIds.clear()
 
             if (messageIds.isNotEmpty()) {
-                lastMessageIdPollTime = messageIds.maxOf {
-                    parseIso8601WithTimezone(it.created_at)
-                }
-
                 val allMessages = withContext(Dispatchers.IO) {
                     SBClient.fetchMessages(roomId)
-                }
-
-                lastPollTime = if (allMessages.isNotEmpty()) {
-                    allMessages.maxOf { parseIso8601WithTimezone(it.created_at) }
-                } else {
-                    System.currentTimeMillis()
                 }
 
                 messageIds.forEach { messageId ->
@@ -1053,15 +1001,15 @@ class ChatRoom(
                         dbMessage.id,
                         "${sender.userName} (${dbMessage.user_id})",
                         sender.userImage,
-                        dbMessage.content
+                        dbMessage.content,
+                        dbMessage.created_at
                     )
                     if (currentRoomId == roomId) {
-                        (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                        withContext(Dispatchers.Main) {
+                            (chatAdapter as? ChatAdapterView.ChatAdapter)?.addMessageIfNotExists(message)
+                        }
                     }
                 }
-            } else {
-                lastMessageIdPollTime = System.currentTimeMillis()
-                lastPollTime = System.currentTimeMillis()
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
@@ -1076,8 +1024,6 @@ class ChatRoom(
          */
         pollingJob?.cancel()
         pollingJob = null
-        lastPollTime = 0
-        lastMessageIdPollTime = 0
         processedMessageIds.clear()
 
         /**

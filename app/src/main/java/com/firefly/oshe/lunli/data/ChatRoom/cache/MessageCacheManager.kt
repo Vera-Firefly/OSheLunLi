@@ -14,8 +14,11 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Update
 import androidx.sqlite.SQLiteConnection
+import co.touchlab.kermit.Logger
+import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.data.ChatRoom.Message
 import com.firefly.oshe.lunli.data.ChatRoom.RoomInfo
+import com.firefly.oshe.lunli.utils.Iso8601Converter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
@@ -39,7 +42,7 @@ private class ChatData {
         @ColumnInfo(name = "is_synced") val isSynced: Boolean = false
     ) {
         fun toMessage(): Message {
-            return Message(id, sender, senderImage, content)
+            return Message(id, sender, senderImage, content, Iso8601Converter.toUtcZeroOffsetFormat(timestamp))
         }
     }
 
@@ -209,7 +212,7 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
                         message.sender,
                         message.senderImage,
                         message.content,
-                        System.currentTimeMillis()
+                        Iso8601Converter.toUtcZeroOffsetTimestamp(message.createdAt)
                     )
                 }
 
@@ -219,11 +222,13 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
 
                 chatDao.updateRoomActivity(roomId, System.currentTimeMillis())
 
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                System.err.println(e)
+            }
         }
     }
 
-    suspend fun saveSingleMessage(roomId: String, message: Message) {
+    suspend fun saveSingleMessage(roomId: String, message: Message, timestamp: Long) {
         withContext(Dispatchers.IO) {
             try {
                 val entity = ChatData.MessageEntity(
@@ -232,11 +237,13 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
                     message.sender,
                     message.senderImage,
                     message.content,
-                    System.currentTimeMillis()
+                    timestamp
                 )
                 chatDao.insertMessage(entity)
                 chatDao.updateRoomActivity(roomId, System.currentTimeMillis())
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                System.err.println(e)
+            }
         }
     }
 
