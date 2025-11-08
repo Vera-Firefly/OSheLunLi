@@ -4,6 +4,7 @@
     <item name="iv_avatar" type="id" />
     <item name="tv_sender" type="id" />
     <item name="fl_content" type="id" />
+    <item name="tv_time" type="id" />
     
     <!-- 聊天室选择页ID -->
     <item name="room_item_root" type="id" />

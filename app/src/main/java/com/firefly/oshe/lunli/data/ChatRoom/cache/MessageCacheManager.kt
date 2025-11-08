@@ -222,9 +222,7 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
 
                 chatDao.updateRoomActivity(roomId, System.currentTimeMillis())
 
-            } catch (e: Exception) {
-                System.err.println(e)
-            }
+            } catch (e: Exception) { }
         }
     }
 
@@ -241,9 +239,7 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
                 )
                 chatDao.insertMessage(entity)
                 chatDao.updateRoomActivity(roomId, System.currentTimeMillis())
-            } catch (e: Exception) {
-                System.err.println(e)
-            }
+            } catch (e: Exception) { }
         }
     }
 

@@ -29,12 +29,12 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import com.firefly.oshe.lunli.utils.Iso8601Converter
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 class ChatAdapterView {
 
@@ -258,6 +258,20 @@ class ChatAdapterView {
             container.addView(textView)
         }
 
+        private fun formatMessageTime(isoTime: String): String {
+            return try {
+                val timestamp = Iso8601Converter.parseUtcZeroOffsetFormat(isoTime)
+
+                val instant = java.time.Instant.ofEpochMilli(timestamp)
+                val dateTime = instant.atZone(java.time.ZoneId.of("Asia/Shanghai"))
+
+                val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                dateTime.format(formatter)
+            } catch (e: Exception) {
+                " "
+            }
+        }
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val rootLayout = LinearLayout(parent.context).apply {
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
@@ -296,6 +310,16 @@ class ChatAdapterView {
             }
             contentArea.addView(contentContainer)
 
+            val timeText = TextView(parent.context).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                    setMargins(0, 2.dp, 0, 0)
+                }
+                textSize = 10f
+                setTextColor(Color.argb(128, 128, 128, 128))
+                id = R.id.tv_time
+            }
+            contentArea.addView(timeText)
+
             rootLayout.addView(contentArea)
 
             return object : RecyclerView.ViewHolder(rootLayout) {}
@@ -308,6 +332,9 @@ class ChatAdapterView {
             val avatar = rootView.findViewById<ImageView>(R.id.iv_avatar)
             val senderName = rootView.findViewById<TextView>(R.id.tv_sender)
             val contentContainer = rootView.findViewById<FrameLayout>(R.id.fl_content)
+            val timeText = rootView.findViewById<TextView>(R.id.tv_time)
+
+            timeText.text = formatMessageTime(message.createdAt)
 
             senderName.text = message.sender
             when {
