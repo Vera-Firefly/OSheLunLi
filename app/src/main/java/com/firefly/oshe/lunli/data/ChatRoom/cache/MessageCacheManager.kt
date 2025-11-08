@@ -271,6 +271,14 @@ class MessageCacheManager(private val context: Context, private val userId: Stri
         }
     }
 
+    suspend fun getLastMessages(roomId: String, limit: Int): List<Message> {
+        return chatDao.getRecentMessages(roomId, limit).map { it.toMessage() }.reversed()
+    }
+
+    suspend fun getLastMessage(roomId: String): Message? {
+        return getLastMessages(roomId, 1).firstOrNull()
+    }
+
     suspend fun saveRoom(roomInfo: RoomInfo, isHidden: Boolean = false) {
         withContext(Dispatchers.IO) {
             try {

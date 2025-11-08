@@ -934,10 +934,13 @@ class ChatRoom(
                         val newMessages = mutableListOf<SBClient.Message>()
 
                         messageIds.forEach { messageIdObj ->
-                            val messages = SBClient.fetchMessages(messageIdObj.id, roomId)
-                            newMessages.addAll(messages)
+                            val lastMessage = messageCacheManager.getLastMessage(roomId)!!
+                            if (lastMessage.id != messageIdObj.id) {
+                                val messages = SBClient.fetchMessages(messageIdObj.id, roomId)
+                                newMessages.addAll(messages)
 
-                            processedMessageIds.add(messageIdObj.id)
+                                processedMessageIds.add(messageIdObj.id)
+                            }
                         }
 
                         if (newMessages.isNotEmpty()) {
