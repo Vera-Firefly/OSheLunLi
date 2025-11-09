@@ -28,6 +28,7 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.internal.notify
 import kotlin.collections.mutableListOf
 
 class RoomAdapterView(
@@ -64,6 +65,22 @@ class RoomAdapterView(
                 rooms[existingRoomIndex] = roomInfo
                 adapter?.notifyItemChanged(existingRoomIndex)
             }
+        }
+    }
+
+    fun removeRoom(roomInfo: RoomInfo) {
+        val existingRoomIndex = rooms.indexOfFirst { it.id == roomInfo.id }
+        if (existingRoomIndex != -1) {
+            rooms.removeAt(existingRoomIndex)
+            adapter?.notifyItemRemoved(existingRoomIndex)
+        }
+    }
+
+    fun removeRoom(roomId: String) {
+        val existingRoomIndex = rooms.indexOfFirst { it.id == roomId }
+        if (existingRoomIndex != -1) {
+            rooms.removeAt(existingRoomIndex)
+            adapter?.notifyItemRemoved(existingRoomIndex)
         }
     }
 
@@ -180,7 +197,6 @@ class RoomAdapterView(
                                             override fun onSuccess(content: String?) {
                                                 rooms.remove(room)
                                                 notifyItemRemoved(holder.bindingAdapterPosition)
-                                                if (isHideRoom) launch { messageCacheManager.deleteRoom(room.id) }
                                                 context.ShowToast("已删除房间: ${room.id}")
                                                 onRoomDeleted(room)
                                             }

@@ -46,7 +46,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.mutableListOf
 
@@ -140,15 +139,7 @@ class ChatRoom(
     }
 
     private fun initializeAdapters() {
-        loadRooms { callback ->
-            if (callback) {
-                loadRoomsFromClient(false) {
-                    if (it) loadRoomsFromClient(true) {}
-                }
-            } else {
-                // TODO:
-            }
-        }
+        loadRooms()
 
         roomAdapterView = RoomAdapterView(
             context,
@@ -164,10 +155,10 @@ class ChatRoom(
                 roomSelectedListener?.onRoomSelected()
             },
             { room ->
-                // 留着有用?
+                CoroutineScope(Dispatchers.IO).launch { messageCacheManager.deleteRoom(room.id) }
             },
             { room ->
-                // 留着有用?
+                // TODO:
             }
         )
 
@@ -414,15 +405,7 @@ class ChatRoom(
                 .setAllCornerSizes(8f.dp)
                 .build()
             setOnClickListener {
-                loadRooms { callback ->
-                    if (callback) {
-                        loadRoomsFromClient(false) {
-                            if (it) loadRoomsFromClient(true) {}
-                        }
-                    } else {
-                        // TODO:
-                    }
-                }
+                loadRooms()
             }
         }
 
@@ -664,6 +647,9 @@ class ChatRoom(
                             clipboard.setPrimaryClip(clip)
                             context.ShowToast("房间ID已复制到剪切板")
                         } else {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                messageCacheManager.saveRoom(newRoom, false)
+                            }
                             context.ShowToast("房间创建成功")
                         }
                     }
@@ -717,28 +703,23 @@ class ChatRoom(
         chatRecyclerView?.scrollToPosition((chatAdapter?.itemCount ?: 1) - 1)
     }
 
-    private fun loadRooms(callback: (Boolean) -> Unit = {}) {
+    private fun loadRooms() {
         client = Client(context)
         if (isLoading) {
             context.ShowToast("正在加载房间列表, 请稍后...")
-            callback(false)
-        } else {
-            isLoading = true
-            callback(true)
+            return
         }
+        isLoading = true
+        loadRoomsFromClient(false)
     }
 
-    private fun loadRoomsFromClient(hide: Boolean, callback: (Boolean) -> Unit) {
-        val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+    private fun loadRoomsFromClient(hide: Boolean) {
+        val path =  if (hide) "HideRoomInfo" else "RoomInfo"
         client.getDir(path, object : Client.ResultCallback {
-            override fun onSuccess(content: String) {
-                processRoomDirectory(path, content)
-                callback(true)
-            }
-
+            override fun onSuccess(content: String) { processRoomDirectory(path, content) }
             override fun onFailure(error: String) {
                 isLoading = false
-                callback(false)
+                context.ShowToast("房间{$path}加载失败, 请重试")
             }
         })
     }
@@ -753,7 +734,7 @@ class ChatRoom(
                 put("roomPassword", roomInfo.roomPassword)
             }.toString()
 
-            val path =  if (hide){"HideRoomInfo"} else "RoomInfo"
+            val path =  if (hide) "HideRoomInfo" else "RoomInfo"
 
             client.uploadData(path, roomInfo.id, room, callback)
         } catch (e: Exception) {
@@ -762,71 +743,90 @@ class ChatRoom(
     }
 
     private fun processRoomDirectory(path: String, content: String) {
-        try {
+        runCatching {
             val jsonArray = JSONArray(content)
-            val rooms = mutableListOf<String>()
-
-            for (i in 0 until jsonArray.length()) {
-                val json = jsonArray.getJSONObject(i)
-                val roomName = json.getString("name")
-                if (roomName.endsWith(".json"))
-                    rooms.add(roomName.replace(".json", ""))
+            val rooms = buildList {
+                for (i in 0 until jsonArray.length()) {
+                    val json = jsonArray.optJSONObject(i) ?: continue
+                    val roomName = json.optString("name").takeIf { it.endsWith(".json") } ?: continue
+                    add(roomName.removeSuffix(".json"))
+                }
             }
 
             if (rooms.isNotEmpty()) {
                 client.getMultipleFiles(path, rooms, object : Client.ResultCallback {
                     override fun onSuccess(content: String) {
                         processRoomMessage(path, content)
+                        loadRoomsFromClient(true)
                     }
-
-                    override fun onFailure(error: String) {
-                        // TODO:
-                    }
+                    override fun onFailure(error: String) { isLoading = false }
                 })
             }
-        } catch (e: Exception) {
-            // TODO:
-        }
+        }.onFailure { isLoading = false }
     }
 
     private fun processRoomMessage(path: String, content: String) {
-        try {
-            val result = JSONObject(content)
-            val keys = result.keys()
-            val serverRoomIds = mutableListOf<String>()
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                val result = JSONObject(content)
+                val isHideRoom = path == "HideRoomInfo"
+                val serverRoomIds = mutableListOf<String>()
 
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val roomJson = result.getString(key)
-                val roomInfo = parseRoomInfo(roomJson)
-                serverRoomIds.add(roomInfo.id)
+                result.keys().asSequence().forEach { key ->
+                    val roomJson = result.optString(key).takeIf { it.isNotBlank() } ?: return@forEach
+                    val roomInfo = parseRoomInfo(roomJson)
+                    serverRoomIds.add(roomInfo.id)
 
-                CoroutineScope(Dispatchers.IO).launch {
-                    val localRoom = messageCacheManager.getRoomById(roomInfo.id)
-                    if (localRoom != null && localRoom.roomPassword != roomInfo.roomPassword) {
-                        messageCacheManager.updateRoomPassword(roomInfo.id, roomInfo.roomPassword)
-                        context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
-                    }
+                    if (!isHideRoom) processVisibleRoom(roomInfo)
+                    else processHideRoom(roomInfo)
                 }
 
-                if (path != "HideRoomInfo") roomAdapterView.addRoomIfNotExists(roomInfo)
-            }
+                if (isHideRoom) processRoomComparison(serverRoomIds, true)
+                else processRoomComparison(serverRoomIds, false)
+            }.onFailure {}
+        }
+    }
 
-            CoroutineScope(Dispatchers.IO).launch {
-                val allLocalRooms = messageCacheManager.getAllRooms()
-                allLocalRooms.forEach { localRoom ->
-                    if (!serverRoomIds.contains(localRoom.id) &&
-                        !allLocalRooms.any { it.id == localRoom.id }
-                    ) {
-                        messageCacheManager.updateRoom(localRoom)
-                    }
-                }
-            }
+    private suspend fun processVisibleRoom(roomInfo: RoomInfo) {
+        isLoading = false
+        val localRoom = messageCacheManager.getRoomById(roomInfo.id)
+        if (localRoom != null && localRoom.roomPassword != roomInfo.roomPassword) {
+            messageCacheManager.updateRoomPassword(
+                roomInfo.id,
+                roomInfo.roomPassword
+            )
+            context.ShowToast("房间 ${roomInfo.title} 密码已更新，请重新输入")
+        }
+        if (roomInfo.id.startsWith("${userData.userId}-")) messageCacheManager.saveRoom(roomInfo)
+        withContext(Dispatchers.Main) { roomAdapterView.addRoomIfNotExists(roomInfo) }
+    }
 
-        } catch (e: Exception) {
-            isLoading = false
-        } finally {
-            isLoading = false
+    private suspend fun processHideRoom(roomInfo: RoomInfo) {
+        isLoading = false
+        if (roomInfo.id.startsWith("${userData.userId}-")) {
+            messageCacheManager.saveRoom(roomInfo, true)
+            withContext(Dispatchers.Main) { roomAdapterView.addRoomIfNotExists(roomInfo) }
+        }
+    }
+
+    private suspend fun processRoomComparison(serverRoomIds: List<String>, isHidden: Boolean) {
+        val localRooms = messageCacheManager.getRoomsByVisibility(isHidden)
+        val localRoomIds = localRooms.map { it.id }
+
+        val missingRoomIds = localRoomIds - serverRoomIds.toSet()
+
+        if (missingRoomIds.isNotEmpty()) {
+            processMissingRooms(missingRoomIds)
+        }
+    }
+
+    private suspend fun processMissingRooms(missingRoomIds: List<String>) {
+        missingRoomIds.forEach { roomId ->
+            messageCacheManager.deleteRoom(roomId)
+            withContext(Dispatchers.Main) {
+                roomAdapterView.removeRoom(roomId)
+                context.ShowToast("房间: $roomId 已从服务器移除")
+            }
         }
     }
 
@@ -932,13 +932,15 @@ class ChatRoom(
                 try {
                     val messageIds = SBClient.fetchMessageId(roomId, lastPollingTimeZone)
 
-                    println(lastPollingTimeZone)
                     if (messageIds.isNotEmpty()) {
                         val newMessages = mutableListOf<SBClient.Message>()
 
                         messageIds.forEach { messageIdObj ->
-                            val lastMessage = messageCacheManager.getLastMessage(roomId)!!
-                            if (lastMessage.id != messageIdObj.id) {
+                            var lastMessage = messageCacheManager.getLastMessage(roomId)
+                            if (lastMessage == null) {
+                                lastMessage = (chatAdapter as? ChatAdapterView.ChatAdapter)?.getMessages()?.first()
+                            }
+                            if (lastMessage!!.id != messageIdObj.id) {
                                 val messages = SBClient.fetchMessages(messageIdObj.id, roomId)
                                 newMessages.addAll(messages)
 
@@ -956,7 +958,7 @@ class ChatRoom(
                     delay(3000L)
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        context.ShowToast("轮询消息失败: ${e.message}")
+                        context.ShowToast("轮询消息失败: $e")
                     }
                     delay(5000L)
                 }
