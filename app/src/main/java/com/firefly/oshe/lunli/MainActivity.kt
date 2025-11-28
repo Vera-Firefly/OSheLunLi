@@ -28,6 +28,7 @@ import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.feature.UpdateLauncher
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegisterScreen
@@ -38,6 +39,7 @@ class MainActivity : Activity() {
     private val container by lazy { FrameLayout(this) }
     private var currentScreen: View? = null
 
+    private lateinit var updateLauncher: UpdateLauncher
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
     private lateinit var imagePicker: ImagePicker
@@ -46,7 +48,6 @@ class MainActivity : Activity() {
 
     private val REQUEST_CODE = 12
     private val REQUEST_CODE_PERMISSION = 0x00099
-
 
     private var currentUser = UserData()
     private var colorAnimator: ValueAnimator? = null
@@ -64,6 +65,9 @@ class MainActivity : Activity() {
 
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
+
+        updateLauncher = UpdateLauncher(this)
+        updateLauncher.checkForUpdates(true)
 
         backgroundManager = BackgroundManager(this)
         initBackgroundManager()

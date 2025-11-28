@@ -1,5 +1,6 @@
 package com.firefly.oshe.lunli.client.SupaBase
 
+import android.system.ErrnoException
 import com.firefly.oshe.lunli.client.Token
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
@@ -10,6 +11,7 @@ import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.ktor.http.content.Version
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -203,6 +205,22 @@ object SBClient {
         }
     }.flowOn(Dispatchers.IO)
 
+    suspend fun subscribeNewVersion(version: String): List<NewVersion> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("version")
+                    .select {
+                        filter {
+                            gt("new_version", version)
+                        }
+                        order("created_at", Order.ASCENDING)
+                    }
+                    .decodeList<NewVersion>()
+            } catch (e : ErrnoException) {
+                emptyList()
+            }
+        }
+    }
 
     @Serializable
     data class User(val id: String, val name: String, val image: String)
@@ -237,6 +255,12 @@ object SBClient {
     data class MessageId(
         val id: String,
         val room_id: String,
+        val created_at: String
+    )
+
+    @Serializable
+    data class NewVersion(
+        val version_code: String,
         val created_at: String
     )
 

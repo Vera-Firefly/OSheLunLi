@@ -62,7 +62,8 @@ android {
         minSdk = 29
         versionCode = 107
         versionName = "1.0.7-devel"
-        
+
+        resValue("string", "version_code", "${versionCode}")
         vectorDrawables { 
             useSupportLibrary = true
         }

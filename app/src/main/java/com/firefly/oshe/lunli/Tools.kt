@@ -12,4 +12,9 @@ object Tools {
             show()
         }
     }
+
+    @JvmStatic
+    fun Toast(context: Context, message: String) {
+        context.ShowToast(message)
+    }
 }
