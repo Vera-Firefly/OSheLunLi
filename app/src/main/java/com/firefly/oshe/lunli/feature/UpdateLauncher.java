@@ -6,15 +6,21 @@ import android.content.Context;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Toast;
+
+import androidx.collection.MutableObjectList;
 
 import com.firefly.oshe.lunli.R;
+import com.firefly.oshe.lunli.data.NewVersion;
 
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,7 +32,7 @@ public class UpdateLauncher {
     private static final String IGNORE_VERSION_FILE_NAME = "ignore_version";
     private final Context context;
     private final File dir;
-    private int APP_VERSION;
+    private final int APP_VERSION;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -43,13 +49,32 @@ public class UpdateLauncher {
         }
 
         executor.execute(() -> {
-            JSONObject releaseInfo = fetchReleaseInfo();
+            JSONObject releaseInfo = null;// fetchReleaseInfo();
             if (releaseInfo != null) handleUpdateCheck(releaseInfo, ignore);
             else showToast("当前版本号：" + APP_VERSION);
         });
     }
 
     private JSONObject fetchReleaseInfo() {
+        UpdateLauncherApi api = new UpdateLauncherApi() { };
+        @NotNull List<@NotNull NewVersion> newVersions = api.getInfo(String.valueOf(APP_VERSION));
+        LinkedHashMap<String, JSONObject> objectMap = new LinkedHashMap<>();
+        newVersions.forEach(it -> {
+            JSONObject jsonObject = new JSONObject();
+            try {
+                jsonObject.put("tag_name", it.getTag_name())
+                        .put("name", it.getName())
+                        .put("body", it.getBody())
+                        .put("created_at", it.getCreated_at());
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+            objectMap.put(it.getTag_name(), jsonObject);
+        });
+        return null;
+    }
+
+    private JSONObject fetchNewVersion(LinkedHashMap<String, JSONObject> obj) {
         return null;
     }
 

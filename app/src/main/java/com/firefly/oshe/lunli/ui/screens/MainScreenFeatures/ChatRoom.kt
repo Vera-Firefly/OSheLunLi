@@ -757,7 +757,7 @@ class ChatRoom(
                 client.getMultipleFiles(path, rooms, object : Client.ResultCallback {
                     override fun onSuccess(content: String) {
                         processRoomMessage(path, content)
-                        loadRoomsFromClient(true)
+                        if (path != "HideRoomInfo") loadRoomsFromClient(true)
                     }
                     override fun onFailure(error: String) { isLoading = false }
                 })

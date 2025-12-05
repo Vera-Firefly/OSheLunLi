@@ -260,7 +260,9 @@ object SBClient {
 
     @Serializable
     data class NewVersion(
-        val version_code: String,
+        val tag_name: String,
+        val name: String,
+        val body: String,
         val created_at: String
     )
 
