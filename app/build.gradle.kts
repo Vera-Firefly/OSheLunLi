@@ -60,8 +60,8 @@ android {
     defaultConfig {
         applicationId = appPackageName
         minSdk = 29
-        versionCode = 107
-        versionName = "1.0.7-devel"
+        versionCode = 108
+        versionName = "1.0.8"
 
         resValue("string", "version_code", "${versionCode}")
         vectorDrawables { 
