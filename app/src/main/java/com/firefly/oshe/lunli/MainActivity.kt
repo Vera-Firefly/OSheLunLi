@@ -7,17 +7,26 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Color.BLACK
+import android.graphics.Color.GRAY
+import android.graphics.Color.WHITE
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.Gravity.CENTER
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.LinearLayout.LayoutParams
+import android.widget.LinearLayout.VERTICAL
+import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
@@ -29,6 +38,9 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.feature.UpdateLauncher
+import com.firefly.oshe.lunli.ui.component.Interaction
+import com.firefly.oshe.lunli.ui.popup.PopupManager
+import com.firefly.oshe.lunli.ui.popup.PopupOverlay
 import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegisterScreen
@@ -44,6 +56,8 @@ class MainActivity : Activity() {
     private lateinit var userDataPref: UserDataPref
     private lateinit var imagePicker: ImagePicker
     private lateinit var backgroundManager: BackgroundManager
+    private lateinit var popupOverlay: PopupOverlay
+    private lateinit var interaction: Interaction
 
 
     private val REQUEST_CODE = 12
@@ -66,8 +80,10 @@ class MainActivity : Activity() {
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
 
-        updateLauncher = UpdateLauncher(this)
-        updateLauncher.checkForUpdates(true)
+        popupOverlay = PopupOverlay.create(this, container)
+        PopupManager.initialize(popupOverlay)
+
+        interaction = Interaction(this)
 
         backgroundManager = BackgroundManager(this)
         initBackgroundManager()
@@ -100,8 +116,55 @@ class MainActivity : Activity() {
         } else {
             showLoginScreen(0)
         }
+
+        updateLauncher = UpdateLauncher(this)
+        updateLauncher.checkForUpdates(true)
+
+        PopupManager.show(announcement())
     }
-    
+
+    private fun announcement(): View {
+        return LinearLayout(this).apply {
+            orientation = VERTICAL
+            minimumWidth = 300.dp
+            background = GradientDrawable().apply {
+                setColor(WHITE)
+                this.cornerRadius = 8f
+            }
+
+            TextView(context).apply {
+                text = "公告"
+                textSize = 18f
+                setTextColor(BLACK)
+                gravity = CENTER
+                setPadding(0, 10,  0, 10)
+            }.also { addView(it) }
+
+            TextView(context).apply {
+                text = "由于某些原因\n自动检测更新功能将延迟到下个版本推出"
+                textSize = 14f
+                setTextColor(GRAY)
+                gravity = CENTER
+                setPadding(24, 0,  24, 10)
+            }.also { addView(it) }
+
+            val buttonLayout = LinearLayout(context).apply {
+                orientation = VERTICAL
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    setPadding(8.dp, 0, 8.dp, 4.dp)
+                }
+            }
+
+            interaction.createButton("确认", R.color.light_blue) {
+                PopupManager.dismiss()
+            }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
+            }.also { buttonLayout.addView(it) }
+
+            addView(buttonLayout)
+        }
+    }
+
     private fun checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
