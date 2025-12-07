@@ -33,6 +33,7 @@ import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import com.firefly.oshe.lunli.ui.popup.PopupManager
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.RoomAdapterView
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoomFeatures.ChatAdapterView

@@ -3,8 +3,10 @@ package com.firefly.oshe.lunli
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Color.BLACK
@@ -29,6 +31,7 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
 import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
 import com.firefly.oshe.lunli.Tools.ShowToast
@@ -58,7 +61,7 @@ class MainActivity : Activity() {
     private lateinit var backgroundManager: BackgroundManager
     private lateinit var popupOverlay: PopupOverlay
     private lateinit var interaction: Interaction
-
+    private lateinit var configPref: SharedPreferences
 
     private val REQUEST_CODE = 12
     private val REQUEST_CODE_PERMISSION = 0x00099
@@ -70,6 +73,9 @@ class MainActivity : Activity() {
     private var hasAllFilesPermission = false
     private var isNoticedAllFilesPermissionMissing = false
 
+    private val ANNOUNCEMENT_KET = "announcement_done"
+    private var announcementDone = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -79,6 +85,9 @@ class MainActivity : Activity() {
 
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
+
+        configPref = getPreferences(MODE_PRIVATE)
+        announcementDone = configPref.getBoolean(ANNOUNCEMENT_KET, false)
 
         popupOverlay = PopupOverlay.create(this, container)
         PopupManager.initialize(popupOverlay)
@@ -120,13 +129,16 @@ class MainActivity : Activity() {
         updateLauncher = UpdateLauncher(this)
         updateLauncher.checkForUpdates(true)
 
-        PopupManager.show(announcement())
+        if (!announcementDone)
+            PopupManager.show(announcement())
     }
 
     private fun announcement(): View {
         return LinearLayout(this).apply {
             orientation = VERTICAL
-            minimumWidth = 300.dp
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setMargins(10, 10, 10, 10)
+            }
             background = GradientDrawable().apply {
                 setColor(WHITE)
                 this.cornerRadius = 8f
@@ -137,15 +149,20 @@ class MainActivity : Activity() {
                 textSize = 18f
                 setTextColor(BLACK)
                 gravity = CENTER
-                setPadding(0, 10,  0, 10)
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    setMargins(0, 10, 0, 10)
+                }
             }.also { addView(it) }
 
             TextView(context).apply {
-                text = "由于某些原因\n自动检测更新功能将延迟到下个版本推出"
+                text = "由于某些原因, 自动检测更新功能将延迟到下个版本推出\nPS: 哪个傻逼乱开房, 还开了个问题房间, 给我数据库搞炸了, 搞得我以为哪次修改动大动脉了, 害我查了老半天问题\n伤心😭😭😭😭😭😭😭😭😭"
                 textSize = 14f
+                isSingleLine = false
                 setTextColor(GRAY)
                 gravity = CENTER
-                setPadding(24, 0,  24, 10)
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    setMargins(24, 10, 24, 10)
+                }
             }.also { addView(it) }
 
             val buttonLayout = LinearLayout(context).apply {
@@ -155,8 +172,10 @@ class MainActivity : Activity() {
                 }
             }
 
-            interaction.createButton("确认", R.color.light_blue) {
+            interaction.createButton("确认(不再显示)", R.color.light_blue) {
                 PopupManager.dismiss()
+                announcementDone = true
+                configPref.edit { putBoolean(ANNOUNCEMENT_KET, true) }
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
@@ -406,8 +425,8 @@ class MainActivity : Activity() {
     // 登陆界面事件处理
     fun showLoginScreen(anim: Int) {
         val screen = LoginScreen(
-            context = this,
-            onLoginSuccess = { id ->
+            this,
+            { id ->
                 UserDataPref.setLastUser(this, id)
                 userDataPref.getUser(id)?.let { user ->
                     currentUser = user.copy().apply {
@@ -417,7 +436,7 @@ class MainActivity : Activity() {
                 }
                 showMainScreen(1)
             },
-            onRegisterClick = { showRegisterScreen(3) }
+            { showRegisterScreen(3) }
         )
         switchScreen(screen, anim)
     }
@@ -447,10 +466,10 @@ class MainActivity : Activity() {
     // 主界面事件处理
     fun showMainScreen(anim: Int) {
         val screen = MainScreen(
-            context = this,
-            userData = currentUser,
-            onExitToLogin = { showLoginScreen(4) },
-            onLogout = { showLogoutConfirmDialog() }
+            this,
+            currentUser,
+            { showLoginScreen(4) },
+            { showLogoutConfirmDialog() }
         )
         switchScreen(screen, anim)
     }
