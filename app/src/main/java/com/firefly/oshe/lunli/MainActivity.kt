@@ -3,10 +3,8 @@ package com.firefly.oshe.lunli
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
-import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Color.BLACK
@@ -31,7 +29,6 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
 import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
 import com.firefly.oshe.lunli.Tools.ShowToast
@@ -41,6 +38,8 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.feature.UpdateLauncher
+import com.firefly.oshe.lunli.settings.ANNOUNCEMENT_DONE
+import com.firefly.oshe.lunli.settings.interfaces.SettingsRegistry
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.popup.PopupManager
 import com.firefly.oshe.lunli.ui.popup.PopupOverlay
@@ -48,6 +47,11 @@ import com.firefly.oshe.lunli.ui.screens.LoginScreen
 import com.firefly.oshe.lunli.ui.screens.MainScreen
 import com.firefly.oshe.lunli.ui.screens.RegisterScreen
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
@@ -61,8 +65,8 @@ class MainActivity : Activity() {
     private lateinit var backgroundManager: BackgroundManager
     private lateinit var popupOverlay: PopupOverlay
     private lateinit var interaction: Interaction
-    private lateinit var configPref: SharedPreferences
 
+    private val mainScope = CoroutineScope(Dispatchers.Main + Job())
     private val REQUEST_CODE = 12
     private val REQUEST_CODE_PERMISSION = 0x00099
 
@@ -72,9 +76,6 @@ class MainActivity : Activity() {
     private var isBackgroundAnimated = false
     private var hasAllFilesPermission = false
     private var isNoticedAllFilesPermissionMissing = false
-
-    private val ANNOUNCEMENT_KET = "announcement_done"
-    private var announcementDone = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,8 +87,14 @@ class MainActivity : Activity() {
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
 
-        configPref = getPreferences(MODE_PRIVATE)
-        announcementDone = configPref.getBoolean(ANNOUNCEMENT_KET, false)
+        SettingsRegistry.initialize(this)
+
+        mainScope.launch {
+            val settings = SettingsRegistry.get()
+            settings.preload()
+
+            if (!ANNOUNCEMENT_DONE) PopupManager.show(announcement())
+        }
 
         popupOverlay = PopupOverlay.create(this, container)
         PopupManager.initialize(popupOverlay)
@@ -128,9 +135,6 @@ class MainActivity : Activity() {
 
         updateLauncher = UpdateLauncher(this)
         updateLauncher.checkForUpdates(true)
-
-        if (!announcementDone)
-            PopupManager.show(announcement())
     }
 
     private fun announcement(): View {
@@ -174,8 +178,7 @@ class MainActivity : Activity() {
 
             interaction.createButton("确认(不再显示)", R.color.light_blue) {
                 PopupManager.dismiss()
-                announcementDone = true
-                configPref.edit { putBoolean(ANNOUNCEMENT_KET, true) }
+                ANNOUNCEMENT_DONE = true
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
@@ -214,6 +217,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mainScope.cancel()
     }
 
     private fun showPermissionDialog() {
