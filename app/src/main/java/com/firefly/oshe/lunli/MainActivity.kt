@@ -255,8 +255,6 @@ class MainActivity : Activity() {
         try {
             initBackgroundManager()
 
-            if (ANNOUNCEMENT_DONE) ANNOUNCEMENT_DONE = false
-
             val lastUserId = userDataPref.getLastUser()
 
             lastUserId?.let { userId ->

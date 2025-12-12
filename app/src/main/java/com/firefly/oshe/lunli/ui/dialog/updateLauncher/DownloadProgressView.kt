@@ -114,6 +114,10 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
         this.listener = listener
     }
 
+    fun onDismiss() {
+        PopupManager.dismiss()
+    }
+
     fun isCancelled(): Boolean = isCancelled
 
     fun reset() {

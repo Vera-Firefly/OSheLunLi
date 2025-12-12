@@ -19,7 +19,7 @@ var CACHED_APP_VERSION: Int
 var SAVED_IGNORE_APP_VERSION: Int
     get() = settings._SAVED_IGNORE_APP_VERSION
     set(value) {
-        settings._SAVED_IGNORE_APP_VERSION
+        settings._SAVED_IGNORE_APP_VERSION = value
     }
 
 var ANNOUNCEMENT_DONE: Boolean

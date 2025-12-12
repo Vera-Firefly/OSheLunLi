@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -162,6 +163,7 @@ public class UpdateLauncher {
         String versionName = releaseInfo.getString("latest_name");
         String releaseNotes = releaseInfo.getString("latest_body");
         String releaseUrl = releaseInfo.getString("latest_url");
+        String releaseTime = releaseInfo.getString("latest_created_at");
 
         int remoteVersion = Integer.parseInt(tagName);
         int cachedVersion = getCACHED_APP_VERSION();
@@ -173,15 +175,47 @@ public class UpdateLauncher {
             new Handler(Looper.getMainLooper()).post(() -> showInstallDialog(apkFile));
         } else {
             deleteFileIfExists(apkFile);
-            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(tagName, versionName, releaseNotes, releaseUrl));
+            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(tagName, versionName, releaseNotes, releaseUrl, releaseTime));
         }
     }
 
-    private void showUpdateDialog(String tagName, String versionName, String releaseNotes, String url) {
+    private void showUpdateDialog(String tagName, String versionName, String releaseNotes, String url, String time) {
+        List<NewVersion> versionList = new ArrayList<>();
 
+        versionList.add(new NewVersion(
+                tagName,
+                versionName,
+                releaseNotes,
+                url,
+                time
+        ));
+
+        try {
+            int remoteVersion = Integer.parseInt(tagName);
+            updateDialog.onUpdateDialog(context, versionList, result -> {
+                handleUpdateResult(result, remoteVersion, tagName);
+                return Unit.INSTANCE;
+            });
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
-    private void startDownload(String apkUrl, String tagName) {
+    private void handleUpdateResult(int result, int remoteVersion, String tagName) {
+        switch (result) {
+            case 0:
+                // TODO:
+                break;
+            case 1:
+                setSAVED_IGNORE_APP_VERSION(remoteVersion);
+                break;
+            case 2:
+                // startDownloadFormGIT(RELEASE_URL, tagName);
+                break;
+        }
+    }
+
+    private void startDownloadFormGIT(String apkUrl, String tagName) {
         isCancelled = false;
         DownloadProgressView progressView = new DownloadProgressView(context);
         progressView.setTitle("下载中...");
@@ -197,13 +231,9 @@ public class UpdateLauncher {
             }
         });
 
-        executor.execute(() -> downloadApk(apkUrl, tagName, progressView));
-    }
+        updateDialog.onProgressDialog(progressView);
 
-    private void updateProgressDialog(ProgressDialog progressDialog, int progress) {
-        new Handler(Looper.getMainLooper()).post(() -> {
-            progressDialog.setProgress(progress);
-        });
+        executor.execute(() -> downloadApk(apkUrl, tagName, progressView));
     }
 
     private void downloadApk(String apkUrl, String tagName, DownloadProgressView progressView) {
@@ -212,6 +242,7 @@ public class UpdateLauncher {
         File apkFile = new File(dir, CACHE_APK_NAME);
 
         try (Response response = client.newCall(request).execute()) {
+            int remoteVersion = Integer.parseInt(tagName);
             if (response.isSuccessful()) {
                 long totalBytes = response.body().contentLength();
                 byte[] buffer = new byte[8192];
@@ -236,20 +267,17 @@ public class UpdateLauncher {
                     }
                 }
 
-
-                new Handler(Looper.getMainLooper()).post(() -> showDownloadCompleteDialog(apkFile));
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    setCACHED_APP_VERSION(remoteVersion);
+                    showInstallDialog(apkFile);
+                });
             } else {
                 showToast("下载失败...");
             }
         } catch (IOException e) {
+            progressView.onDismiss();
             handleException(e);
-        } finally {
-            setCACHED_APP_VERSION(Integer.parseInt(tagName));
         }
-    }
-
-    private void showDownloadCompleteDialog(File apkFile) {
-
     }
 
     private void showInstallDialog(File apkFile) {
@@ -259,7 +287,7 @@ public class UpdateLauncher {
         });
     }
 
-    private void handleInstallResult(int result, File  apkFile) {
+    private void handleInstallResult(int result, File apkFile) {
         switch (result) {
             case 0:
                 showToast("用户取消安装");

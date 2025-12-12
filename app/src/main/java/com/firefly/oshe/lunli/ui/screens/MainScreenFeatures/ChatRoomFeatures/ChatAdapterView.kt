@@ -285,7 +285,7 @@ class ChatAdapterView {
                     setMargins(0, 0, 4.dp, 0)
                 }
                 scaleType = CENTER_CROP
-                id = R.id.iv_avatar
+                id = R.id.chat_avatar
             }
             rootLayout.addView(avatar)
 
@@ -298,7 +298,7 @@ class ChatAdapterView {
                 layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
                 textSize = 12f
                 setTextColor(Color.GRAY)
-                id = R.id.tv_sender
+                id = R.id.chat_sender
             }
             contentArea.addView(senderName)
 
@@ -306,7 +306,7 @@ class ChatAdapterView {
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setMargins(0, 4.dp, 0, 0)
                 }
-                id = R.id.fl_content
+                id = R.id.chat_content
             }
             contentArea.addView(contentContainer)
 
@@ -316,7 +316,7 @@ class ChatAdapterView {
                 }
                 textSize = 10f
                 setTextColor(Color.argb(128, 128, 128, 128))
-                id = R.id.tv_time
+                id = R.id.chat_time
             }
             contentArea.addView(timeText)
 
@@ -329,10 +329,10 @@ class ChatAdapterView {
             val message = messages[position]
             val rootView = holder.itemView
 
-            val avatar = rootView.findViewById<ImageView>(R.id.iv_avatar)
-            val senderName = rootView.findViewById<TextView>(R.id.tv_sender)
-            val contentContainer = rootView.findViewById<FrameLayout>(R.id.fl_content)
-            val timeText = rootView.findViewById<TextView>(R.id.tv_time)
+            val avatar = rootView.findViewById<ImageView>(R.id.chat_avatar)
+            val senderName = rootView.findViewById<TextView>(R.id.chat_sender)
+            val contentContainer = rootView.findViewById<FrameLayout>(R.id.chat_content)
+            val timeText = rootView.findViewById<TextView>(R.id.chat_time)
 
             timeText.text = formatMessageTime(message.createdAt)
 
