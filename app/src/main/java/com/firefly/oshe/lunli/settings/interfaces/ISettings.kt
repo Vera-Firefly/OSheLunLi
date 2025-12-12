@@ -5,9 +5,12 @@ package com.firefly.oshe.lunli.settings.interfaces
  * 定义所有的设置项
  */
 interface ISettings {
+    var _LAST_APP_VERSION: Int
+    var _CACHED_APP_VERSION: Int
+    var _SAVED_IGNORE_APP_VERSION: Int
     var _ANNOUNCEMENT_DONE: Boolean
-    
+
     suspend fun preload()
-    
+
     fun isPreloaded(): Boolean
 }

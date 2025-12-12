@@ -33,45 +33,84 @@ internal class SettingsImpl(
     private val context: Context,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
 ) : ISettings {
-    private val settingsManager by lazy { SettingsManager.getInstance(context) }
-    
+    private val settingsManager by lazy { SettingsManager.Companion.getInstance(context) }
+
     // 预加载状态
     private val isPreloaded = AtomicBoolean(false)
-    
+
     // 缓存成员变量
+    private var _lastAppVersion: Int = 100
+    private var _cachedAppVersion: Int = 0
+    private var _savedIgnoreAppVersion: Int = 0
     private var _announcementDone: Boolean = false
-    
+
     // ISettings接口实现
+    override var _LAST_APP_VERSION: Int
+        get() = _lastAppVersion
+        set(value) {
+            _lastAppVersion = value
+            saveSync(SettingsKey.LAST_APP_VERSION, value)
+        }
+
+    override var _CACHED_APP_VERSION: Int
+        get() = _cachedAppVersion
+        set(value) {
+            _cachedAppVersion = value
+            saveSync(SettingsKey.CACHED_APP_VERSION, value)
+        }
+
+    override var _SAVED_IGNORE_APP_VERSION: Int
+        get() = _savedIgnoreAppVersion
+        set(value) {
+            _savedIgnoreAppVersion = value
+            saveSync(SettingsKey.SAVED_IGNORE_APP_VERSION, value)
+        }
+
     override var _ANNOUNCEMENT_DONE: Boolean
         get() = _announcementDone
         set(value) {
             _announcementDone = value
             saveSync(SettingsKey.ANNOUNCEMENT_DONE, value)
         }
-    
+
     // 懒得给注释, 看不懂别看了, 回去睡觉
     override suspend fun preload() {
         if (isPreloaded.get()) return
-        
+
         withContext(Dispatchers.IO) {
+            _lastAppVersion = settingsManager.getInt(
+                SettingsKey.LAST_APP_VERSION,
+                100
+            )
+
+            _cachedAppVersion = settingsManager.getInt(
+                SettingsKey.CACHED_APP_VERSION,
+                0
+            )
+
+            _savedIgnoreAppVersion = settingsManager.getInt(
+                SettingsKey.SAVED_IGNORE_APP_VERSION,
+                0
+            )
+
             _announcementDone = settingsManager.getBoolean(
                 SettingsKey.ANNOUNCEMENT_DONE,
                 false
             )
-            
+
             isPreloaded.set(true)
         }
     }
-    
+
     override fun isPreloaded(): Boolean = isPreloaded.get()
-    
+
     // 就用Any, 就用
     private fun saveSync(key: String, value: Any) {
         coroutineScope.launch(Dispatchers.IO) {
             saveValueToDatabase(key, value)
         }
     }
-    
+
     // 异步保存值到数据库
     private suspend fun saveValueToDatabase(key: String, value: Any) {
         when (value) {
@@ -84,15 +123,15 @@ internal class SettingsImpl(
             /*
             is List<*> -> {
                 when {
-                    value.isNotEmpty() && value[0] is String -> 
+                    value.isNotEmpty() && value[0] is String ->
                         settingsManager.saveStringList(key, value as List<String>)
-                    
-                    value.isNotEmpty() && value[0] is Int -> 
+
+                    value.isNotEmpty() && value[0] is Int ->
                         settingsManager.saveSetting(key, SettingValue.IntListValue(value as List<Int>))
-                    
-                    value.isEmpty() -> 
+
+                    value.isEmpty() ->
                         settingsManager.saveStringList(key, emptyList())
-                    
+
                     else -> {
                         try {
                             val json = Json.encodeToString(value)
@@ -103,7 +142,7 @@ internal class SettingsImpl(
                     }
                 }
             }
-            
+
             // 我也不知道会不会用到这个, 先留着吧, 有总比没有好
             else -> {
                 try {

@@ -1,17 +1,13 @@
-package com.firefly.oshe.lunli.ui.dialog
+package com.firefly.oshe.lunli.ui.dialog.crop
 
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.view.Gravity.CENTER
+import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.LinearLayout.HORIZONTAL
-import android.widget.LinearLayout.LayoutParams
-import android.widget.LinearLayout.VERTICAL
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.R
@@ -38,12 +34,15 @@ class CropDialog(
     fun showCropDialog(bitmap: Bitmap, cropType: Int = -1, onCropResult: (Bitmap?) -> Unit = {}) {
         this.onCropResult = onCropResult
         val rootView = LinearLayout(context).apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.WHITE)
         }
 
         cropView = CropUtils(context).apply {
-            layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
             setImage(bitmap)
             if (cropType != -1) {
                 setCropType(getCropTypeFromInt(cropType))
@@ -51,8 +50,11 @@ class CropDialog(
         }
 
         val buttonLayout = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
                 setPadding(16, 16, 16, 16)
             }
         }
@@ -68,7 +70,7 @@ class CropDialog(
         ) {
             popupWindow.dismiss()
         }.apply {
-            layoutParams = LayoutParams(0, 48.dp, 1f).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f).apply {
                 marginEnd = 8
             }
         }.also { buttonLayout.addView(it) }
@@ -81,15 +83,15 @@ class CropDialog(
             onCropResult(croppedBitmap)
             popupWindow.dismiss()
         }.apply {
-            layoutParams = LayoutParams(0, 48.dp, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, 48.dp, 1f)
         }.also {
             buttonLayout.addView(it)
         }
 
         rootView.addView(
             cropView,
-            LayoutParams(
-                MATCH_PARENT,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
             )
@@ -98,8 +100,8 @@ class CropDialog(
 
         popupWindow = PopupWindow(
             rootView,
-            MATCH_PARENT,
-            MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
             true
         ).apply {
             isOutsideTouchable = false
@@ -109,11 +111,14 @@ class CropDialog(
 
     private fun createCropTypeSelector(): LinearLayout {
         return LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
                 setPadding(16, 16, 16, 8)
             }
-            gravity = CENTER
+            gravity = Gravity.CENTER
 
             createTypeButton("正方形", 0).also { addView(it) }
 
@@ -133,7 +138,7 @@ class CropDialog(
             cornerRadius = 6.dp
             elevation = 0.dp.toFloat()
             stateListAnimator = null
-            layoutParams = LayoutParams(WRAP_CONTENT, 36.dp).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 36.dp).apply {
                 marginEnd = 8
             }
 
@@ -175,7 +180,7 @@ class CropDialog(
 
     fun showAtLocation(view: View) {
         if (::popupWindow.isInitialized) {
-            popupWindow.showAtLocation(view, CENTER, 0, 0)
+            popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0)
         }
     }
 
@@ -197,7 +202,7 @@ class CropDialog(
             stateListAnimator = null
 
             setOnClickListener { onClick() }
-            layoutParams = LayoutParams(WRAP_CONTENT, 48.dp)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 48.dp)
         }
     }
 }

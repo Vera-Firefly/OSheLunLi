@@ -28,7 +28,7 @@ import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
 import com.firefly.oshe.lunli.Tools.ShowToast
-import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import com.firefly.oshe.lunli.ui.dialog.crop.CropDialog
 import com.firefly.oshe.lunli.utils.Iso8601Converter
 import java.io.File
 import java.io.FileOutputStream

@@ -211,7 +211,7 @@ object SBClient {
                 client.from("version")
                     .select {
                         filter {
-                            gt("new_version", version)
+                            gt("tag_name", version)
                         }
                         order("created_at", Order.ASCENDING)
                     }
@@ -263,6 +263,7 @@ object SBClient {
         val tag_name: String,
         val name: String,
         val body: String,
+        val url: String,
         val created_at: String
     )
 

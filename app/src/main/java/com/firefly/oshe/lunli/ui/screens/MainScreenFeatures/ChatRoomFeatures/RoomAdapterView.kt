@@ -114,7 +114,9 @@ class RoomAdapterView(
         private fun loadLocalRooms() {
             CoroutineScope(Dispatchers.IO).launch {
                 messageCacheManager.getAllRooms().forEach { room ->
-                    addRoomIfNotExists(room)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        addRoomIfNotExists(room)
+                    }
                 }
             }
         }

@@ -15,7 +15,7 @@ import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.ui.component.Interaction
-import com.firefly.oshe.lunli.ui.dialog.CropDialog
+import com.firefly.oshe.lunli.ui.dialog.crop.CropDialog
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.HomePageFeatures.InformationAdapterView
 
 // 用户个人主页

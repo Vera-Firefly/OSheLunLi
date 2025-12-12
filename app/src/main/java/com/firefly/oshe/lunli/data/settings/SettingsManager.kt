@@ -75,6 +75,9 @@ class SettingConverters {
 }
 
 object SettingsKey {
+    const val LAST_APP_VERSION = "last_app_version"
+    const val CACHED_APP_VERSION = "cached_app_version"
+    const val SAVED_IGNORE_APP_VERSION = "saved_ignore_app_version"
     const val ANNOUNCEMENT_DONE = "announcement_done"
 }
 

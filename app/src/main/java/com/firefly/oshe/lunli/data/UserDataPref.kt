@@ -71,6 +71,18 @@ class UserDataPref(private val context: Context) {
         }
     }
 
+    fun setLastUser(userId: String) {
+        context.getSharedPreferences("user_status", Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_USER, userId)
+            .apply()
+    }
+
+    fun getLastUser(): String? {
+        return context.getSharedPreferences("user_status", Context.MODE_PRIVATE)
+            .getString(KEY_LAST_USER, null)
+    }
+
     private fun saveAllUsers(users: Map<String, UserData>) {
         val json = Gson().toJson(users)
         prefs.edit().putString(KEY_USERS, json).apply()
@@ -79,17 +91,5 @@ class UserDataPref(private val context: Context) {
     companion object {
         private const val KEY_USERS = "user_data_map"
         private const val KEY_LAST_USER = "last_login_user"
-        
-        fun setLastUser(context: Context, userId: String) {
-            context.getSharedPreferences("user_status", Context.MODE_PRIVATE)
-                .edit()
-                .putString(KEY_LAST_USER, userId)
-                .apply()
-        }
-
-        fun getLastUser(context: Context): String? {
-            return context.getSharedPreferences("user_status", Context.MODE_PRIVATE)
-                .getString(KEY_LAST_USER, null)
-        }
     }
 }

@@ -3,19 +3,23 @@ package com.firefly.oshe.lunli
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Color.BLACK
 import android.graphics.Color.GRAY
 import android.graphics.Color.WHITE
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.Gravity
 import android.view.Gravity.CENTER
 import android.view.KeyEvent
 import android.view.View
@@ -24,6 +28,7 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.LinearLayout.HORIZONTAL
 import android.widget.LinearLayout.LayoutParams
 import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
@@ -37,7 +42,7 @@ import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
-import com.firefly.oshe.lunli.feature.UpdateLauncher
+import com.firefly.oshe.lunli.feature.UpdateLauncher.UpdateLauncher
 import com.firefly.oshe.lunli.settings.ANNOUNCEMENT_DONE
 import com.firefly.oshe.lunli.settings.interfaces.SettingsRegistry
 import com.firefly.oshe.lunli.ui.component.Interaction
@@ -52,12 +57,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
     private val container by lazy { FrameLayout(this) }
     private var currentScreen: View? = null
 
+    private lateinit var context: Context
     private lateinit var updateLauncher: UpdateLauncher
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
@@ -80,10 +85,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        thread {
-            MarkdownRenderer.init(applicationContext)
-        }
-
+        context = this
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(container)
 
@@ -93,56 +95,32 @@ class MainActivity : Activity() {
             val settings = SettingsRegistry.get()
             settings.preload()
 
-            if (!ANNOUNCEMENT_DONE) PopupManager.show(announcement())
-        }
+            // 初始化
+            MarkdownRenderer.init(context)
 
-        popupOverlay = PopupOverlay.create(this, container)
-        PopupManager.initialize(popupOverlay)
+            popupOverlay = PopupOverlay.create(context, container)
+            PopupManager.initialize(popupOverlay)
 
-        interaction = Interaction(this)
+            interaction = Interaction(context)
+            backgroundManager = BackgroundManager(context)
+            client = Client(context)
+            userDataPref = UserDataPref(context)
+            imagePicker = ImagePicker(this@MainActivity)
+            updateLauncher = UpdateLauncher(context)
 
-        backgroundManager = BackgroundManager(this)
-        initBackgroundManager()
-
-        client = Client(this)
-        userDataPref = UserDataPref(this)
-
-        val lastUserId = UserDataPref.getLastUser(this)
-
-        lastUserId?.let { userId ->
-            userDataPref.getUser(userId)?.let { user ->
-                currentUser.apply {
-                    this.userId = user.userId
-                    userName = user.userName
-                    password = if (user.hasPasswordError) "" else user.password
-                    hasPasswordError = user.hasPasswordError
-                }
-                if (user.hasPasswordError) {
-                    showLoginScreen(0)
-                    this.ShowToast("请重新输入密码")
-                    return
-                }
+            if (settings.isPreloaded()) {
+                initMainView()
             }
         }
-
-        imagePicker = ImagePicker(this)
-
-        if (currentUser.isValid()) {
-            showMainScreen(0)
-        } else {
-            showLoginScreen(0)
-        }
-
-        updateLauncher = UpdateLauncher(this)
-        updateLauncher.checkForUpdates(true)
     }
 
     private fun announcement(): View {
         return LinearLayout(this).apply {
             orientation = VERTICAL
-            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 setMargins(10, 10, 10, 10)
             }
+
             background = GradientDrawable().apply {
                 setColor(WHITE)
                 this.cornerRadius = 8f
@@ -163,24 +141,24 @@ class MainActivity : Activity() {
                 textSize = 14f
                 isSingleLine = false
                 setTextColor(GRAY)
-                gravity = CENTER
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setMargins(24, 10, 24, 10)
                 }
             }.also { addView(it) }
 
             val buttonLayout = LinearLayout(context).apply {
-                orientation = VERTICAL
+                orientation = HORIZONTAL
                 layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setPadding(8.dp, 0, 8.dp, 4.dp)
                 }
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
             }
 
             interaction.createButton("确认(不再显示)", R.color.light_blue) {
                 PopupManager.dismiss()
                 ANNOUNCEMENT_DONE = true
             }.apply {
-                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
+                layoutParams = LayoutParams(WRAP_CONTENT,  WRAP_CONTENT)
             }.also { buttonLayout.addView(it) }
 
             addView(buttonLayout)
@@ -218,6 +196,11 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         mainScope.cancel()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        imagePicker.handleActivityResult(requestCode, resultCode, data)
     }
 
     private fun showPermissionDialog() {
@@ -267,9 +250,43 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        imagePicker.handleActivityResult(requestCode, resultCode, data)
+    private fun initMainView() {
+        // 不要动这里的try-catch/-finally语句, 在你不知道为啥之前
+        try {
+            initBackgroundManager()
+
+            if (ANNOUNCEMENT_DONE) ANNOUNCEMENT_DONE = false
+
+            val lastUserId = userDataPref.getLastUser()
+
+            lastUserId?.let { userId ->
+                userDataPref.getUser(userId)?.let { user ->
+                    currentUser.apply {
+                        this.userId = user.userId
+                        userName = user.userName
+                        password = if (user.hasPasswordError) "" else user.password
+                        hasPasswordError = user.hasPasswordError
+                    }
+                    if (user.hasPasswordError) {
+                        showLoginScreen(0)
+                        context.ShowToast("请重新输入密码")
+                        return
+                    }
+                }
+            }
+
+            if (currentUser.isValid()) {
+                showMainScreen(0)
+            } else {
+                showLoginScreen(0)
+            }
+
+            if (!ANNOUNCEMENT_DONE) PopupManager.show(announcement())
+
+            updateLauncher.checkForUpdates(true)
+        } finally {
+            println("All View Done")
+        }
     }
 
     private fun initBackgroundManager() {
@@ -295,11 +312,11 @@ class MainActivity : Activity() {
     }
 
     // 背景选择, 暂时不启用
-    fun switchToCustomBackground(drawable: android.graphics.drawable.Drawable) {
+    fun switchToCustomBackground(drawable: Drawable) {
         backgroundManager.setCustomImageBackground(container, drawable)
     }
 
-    fun switchToCustomBackground(bitmap: android.graphics.Bitmap) {
+    fun switchToCustomBackground(bitmap: Bitmap) {
         backgroundManager.setCustomImageBackground(container, bitmap)
     }
 
@@ -431,7 +448,7 @@ class MainActivity : Activity() {
         val screen = LoginScreen(
             this,
             { id ->
-                UserDataPref.setLastUser(this, id)
+                userDataPref.setLastUser(id)
                 userDataPref.getUser(id)?.let { user ->
                     currentUser = user.copy().apply {
                         hasPasswordError = false
@@ -458,7 +475,7 @@ class MainActivity : Activity() {
                     ""
                 )
                 userDataPref.saveUser(currentUser)
-                UserDataPref.setLastUser(this, id)
+                userDataPref.setLastUser(id)
                 UserInformationPref(this).saveInformation(inf)
                 showMainScreen(1)
             },

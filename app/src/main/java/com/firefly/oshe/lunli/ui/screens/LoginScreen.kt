@@ -282,7 +282,7 @@ class LoginScreen(
                             user.optString("password")
                         )
                         userDataPref.saveUser(data)
-                        UserDataPref.setLastUser(context, inputUserId)
+                        userDataPref.setLastUser(inputUserId)
                         UserInformationPref(context).deleteInformation(inputUserId)
                         getUserImage(inputUserId) {
                             if (it == "NULL") {

@@ -7,6 +7,7 @@ data class NewVersion(
     var tag_name: String,
     var name: String,
     var body: String,
+    var url: String,
     var created_at: String
 ) {
 
