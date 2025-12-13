@@ -137,7 +137,7 @@ class MainActivity : Activity() {
             }.also { addView(it) }
 
             TextView(context).apply {
-                text = "由于某些原因, 自动检测更新功能将延迟到下个版本推出\nPS: 哪个傻逼乱开房, 还开了个问题房间, 给我数据库搞炸了, 搞得我以为哪次修改动大动脉了, 害我查了老半天问题\n伤心😭😭😭😭😭😭😭😭😭"
+                text = "自动更新功能已经上架, 后继有更新时可选择APP内下载或点击更新日志中的下载链接下载\nPS: 啊啊啊啊啊啊啊啊啊, 这么一个功能写了我好几天, 想抄以前写过的还抄不了, 只能从头开始, 累死我了"
                 textSize = 14f
                 isSingleLine = false
                 setTextColor(GRAY)
