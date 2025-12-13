@@ -38,8 +38,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class UpdateLauncher {
-    private static final String API = "https://api.github.com/repos/Vera-Firefly/OSheLunLi/releases/latest";
-    private static final String RELEASE_URL = "github.com/Vera-Firefly/OSheLunLi/releases/download/%s/app-release.apk";
+    private static final String RELEASE_URL = "https://github.com/Vera-Firefly/OSheLunLi/releases/download/%s/app-release.apk";
     private static final String CACHE_APK_NAME = "cache.apk";
     private final Context context;
     private final File dir;
@@ -159,11 +158,22 @@ public class UpdateLauncher {
             return;
         }
 
+        JSONArray versionsArray = releaseInfo.getJSONArray("versions");
+        List<NewVersion> allVersions = new ArrayList<>();
+
         String tagName = releaseInfo.getString("latest_tag_name");
-        String versionName = releaseInfo.getString("latest_name");
-        String releaseNotes = releaseInfo.getString("latest_body");
-        String releaseUrl = releaseInfo.getString("latest_url");
-        String releaseTime = releaseInfo.getString("latest_created_at");
+
+        for (int i = 0; i < versionsArray.length(); i++) {
+            JSONObject versionObj = versionsArray.getJSONObject(i);
+            NewVersion version = new NewVersion(
+                    versionObj.getString("tag_name"),
+                    versionObj.getString("name"),
+                    versionObj.getString("body"),
+                    versionObj.getString("url"),
+                    versionObj.getString("created_at")
+            );
+            allVersions.add(version);
+        }
 
         int remoteVersion = Integer.parseInt(tagName);
         int cachedVersion = getCACHED_APP_VERSION();
@@ -175,25 +185,16 @@ public class UpdateLauncher {
             new Handler(Looper.getMainLooper()).post(() -> showInstallDialog(apkFile));
         } else {
             deleteFileIfExists(apkFile);
-            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(tagName, versionName, releaseNotes, releaseUrl, releaseTime));
+            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(allVersions, tagName));
         }
     }
 
-    private void showUpdateDialog(String tagName, String versionName, String releaseNotes, String url, String time) {
-        List<NewVersion> versionList = new ArrayList<>();
-
-        versionList.add(new NewVersion(
-                tagName,
-                versionName,
-                releaseNotes,
-                url,
-                time
-        ));
-
+    private void showUpdateDialog(List<NewVersion> versionList, String tagName) {
         try {
             int remoteVersion = Integer.parseInt(tagName);
+            String apkUrl = String.format(RELEASE_URL, tagName);
             updateDialog.onUpdateDialog(context, versionList, result -> {
-                handleUpdateResult(result, remoteVersion, tagName);
+                handleUpdateResult(result, remoteVersion, apkUrl, tagName);
                 return Unit.INSTANCE;
             });
         } catch (Exception e) {
@@ -201,16 +202,16 @@ public class UpdateLauncher {
         }
     }
 
-    private void handleUpdateResult(int result, int remoteVersion, String tagName) {
+    private void handleUpdateResult(int result, int remoteVersion, String apkUrl, String tagName) {
         switch (result) {
             case 0:
-                // TODO:
+                showToast("更新将在下一次进入软件时推送");
                 break;
             case 1:
                 setSAVED_IGNORE_APP_VERSION(remoteVersion);
                 break;
             case 2:
-                // startDownloadFormGIT(RELEASE_URL, tagName);
+                startDownloadFormGIT(apkUrl, tagName);
                 break;
         }
     }
@@ -256,6 +257,7 @@ public class UpdateLauncher {
                         if (isCancelled) {
                             outputStream.close();
                             apkFile.delete();
+                            showToast("下载已取消");
                             return;
                         }
 
@@ -275,7 +277,7 @@ public class UpdateLauncher {
                 showToast("下载失败...");
             }
         } catch (IOException e) {
-            progressView.onDismiss();
+            new Handler(Looper.getMainLooper()).post(progressView::onDismiss);
             handleException(e);
         }
     }
@@ -310,7 +312,7 @@ public class UpdateLauncher {
 
     private void installApk(File apkFile) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        Uri apkUri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", apkFile);
+        Uri apkUri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", apkFile);
         intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);

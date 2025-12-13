@@ -33,7 +33,7 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        layoutParams = ViewGroup.LayoutParams( dpToPx(300), LayoutParams.WRAP_CONTENT)
+        layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
 
         background = GradientDrawable().apply {
             setColor(Color.WHITE)

@@ -127,7 +127,7 @@ class PopupOverlay private constructor(
             addView(backgroundLayer)
 
             contentContainer = FrameLayout(context).apply {
-                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(300.dp(), WRAP_CONTENT).apply {
                     gravity = CENTER
                 }
 
@@ -143,7 +143,7 @@ class PopupOverlay private constructor(
             content.isClickable = true
             content.isFocusable = true
 
-            content.layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            content.layoutParams = LayoutParams(300.dp(), WRAP_CONTENT).apply {
                 gravity = CENTER
             }
 

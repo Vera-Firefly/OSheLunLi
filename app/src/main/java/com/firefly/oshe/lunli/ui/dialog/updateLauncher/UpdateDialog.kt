@@ -168,7 +168,7 @@ class UpdateDialog {
             }.also { addView(it) }
 
             TextView(context).apply {
-                text = "有新版本已经下载道${path}, 你要安装它吗?"
+                text = "有新版本已经下载到: ${path}, 你要安装它吗?"
                 textSize = 14f
                 isSingleLine = false
                 setTextColor(Color.GRAY)

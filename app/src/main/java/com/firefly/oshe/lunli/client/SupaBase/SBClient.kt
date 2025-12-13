@@ -210,12 +210,9 @@ object SBClient {
             try {
                 client.from("version")
                     .select {
-                        /*
                         filter {
                             gt("tag_name", version)
                         }
-
-                         */
                         order("created_at", Order.ASCENDING)
                     }
                     .decodeList<NewVersion>()

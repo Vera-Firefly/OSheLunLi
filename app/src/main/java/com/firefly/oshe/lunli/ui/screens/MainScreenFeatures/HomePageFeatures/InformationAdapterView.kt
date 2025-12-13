@@ -35,6 +35,7 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.dp
+import com.firefly.oshe.lunli.feature.UpdateLauncher.UpdateLauncher
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.utils.ImageUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -138,6 +139,12 @@ class InformationAdapterView(
                 CoroutineScope(Dispatchers.IO).launch {
                     userMessageCacheManager.clearAllData()
                 }
+            }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
+            }.also { buttonLayout.addView(it) }
+
+            interaction.createButton("检查更新", R.color.light_blue) {
+                UpdateLauncher(context).checkForUpdates(false)
             }.apply {
                 layoutParams = LayoutParams(MATCH_PARENT, 48.dp, 1f)
             }.also { buttonLayout.addView(it) }
