@@ -1,4 +1,4 @@
-package com.firefly.oshe.lunli.settings.interfaces
+package com.firefly.oshe.lunli.GlobalInterface.settings
 
 import android.content.Context
 import com.firefly.oshe.lunli.data.settings.SettingValue

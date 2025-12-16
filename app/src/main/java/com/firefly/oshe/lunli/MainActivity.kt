@@ -18,6 +18,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.Gravity.CENTER
@@ -34,8 +36,8 @@ import android.widget.LinearLayout.VERTICAL
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.firefly.oshe.lunli.GlobalInterface.ImagePicker
-import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
+import com.firefly.oshe.lunli.GlobalInterface.imageHelper.ImagePicker
+import com.firefly.oshe.lunli.GlobalInterface.imageHelper.ImageSelectionManager
 import com.firefly.oshe.lunli.Tools.ShowToast
 import com.firefly.oshe.lunli.client.Client
 import com.firefly.oshe.lunli.data.UserData
@@ -44,7 +46,8 @@ import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.feature.UpdateLauncher.UpdateLauncher
 import com.firefly.oshe.lunli.settings.ANNOUNCEMENT_DONE
-import com.firefly.oshe.lunli.settings.interfaces.SettingsRegistry
+import com.firefly.oshe.lunli.GlobalInterface.settings.SettingsRegistry
+import com.firefly.oshe.lunli.GlobalInterface.BackEventPublisher
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.popup.PopupManager
 import com.firefly.oshe.lunli.ui.popup.PopupOverlay
@@ -70,6 +73,7 @@ class MainActivity : Activity() {
     private lateinit var backgroundManager: BackgroundManager
     private lateinit var popupOverlay: PopupOverlay
     private lateinit var interaction: Interaction
+    private var doubleBackToExitPressedOnce = false
 
     private val mainScope = CoroutineScope(Dispatchers.Main + Job())
     private val REQUEST_CODE = 12
@@ -86,8 +90,13 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         context = this
+
+        val launchAppView = LaunchAppView(this)
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-        setContentView(container)
+        setContentView(launchAppView)
+
+        launchAppView.setScreenSize(2712, 1220)
+        launchAppView.startRenderView()
 
         SettingsRegistry.initialize(this)
 
@@ -109,6 +118,8 @@ class MainActivity : Activity() {
             updateLauncher = UpdateLauncher(context)
 
             if (settings.isPreloaded()) {
+                launchAppView.stopRenderView()
+                setContentView(container)
                 initMainView()
             }
         }
@@ -201,6 +212,26 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         imagePicker.handleActivityResult(requestCode, resultCode, data)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        val isConsumed = BackEventPublisher.publishBackEvent()
+        if (!isConsumed) handleExit()
+    }
+
+    fun handleExit() {
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed()
+            return
+        }
+
+        doubleBackToExitPressedOnce = true
+        context.ShowToast("再按一次退出应用")
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            doubleBackToExitPressedOnce = false
+        }, 2000)
     }
 
     private fun showPermissionDialog() {

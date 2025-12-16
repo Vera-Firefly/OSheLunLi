@@ -1,4 +1,4 @@
-package com.firefly.oshe.lunli.GlobalInterface
+package com.firefly.oshe.lunli.GlobalInterface.imageHelper
 
 import android.net.Uri
 

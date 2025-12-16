@@ -18,6 +18,8 @@ import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.data.UserData
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
+import com.firefly.oshe.lunli.GlobalInterface.BackEventPublisher
+import com.firefly.oshe.lunli.GlobalInterface.BackListening
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.ChatRoom
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.Community
 import com.firefly.oshe.lunli.ui.screens.MainScreenFeatures.HomePage
@@ -28,7 +30,7 @@ class MainScreen(
     private val userData: UserData,
     private val onExitToLogin: () -> Unit,
     private val onLogout: () -> Unit
-) : LinearLayout(context) {
+) : LinearLayout(context), BackListening {
 
     private lateinit var topBar: LinearLayout
     private lateinit var mainView: LinearLayout
@@ -55,6 +57,8 @@ class MainScreen(
             field = value
         }
 
+    private var isPageBack: Boolean = true
+
     private var endBar: LinearLayout? = null
     private var userAvatar: LinearLayout? = null
     private var backToMain: LinearLayout? = null
@@ -69,6 +73,15 @@ class MainScreen(
         orientation = VERTICAL
         layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setupViews()
+        BackEventPublisher.registerListener(this)
+    }
+
+    override fun onBackPressed(): Boolean {
+        return when (selectedTabIndex) {
+            1 -> onCEPageBack()
+            2 -> onHomePageBack()
+            else -> onChatRoomBack()
+        }
     }
 
     private fun setupViews() {
@@ -89,24 +102,16 @@ class MainScreen(
     private fun setupChatRoom() {
         chatRoomContent = ChatRoom(context, userData).apply {
             setOnRoomSelectedListener {
-                post {
-                    topBar.removeAllViews()
-                    getTopBarComponent()?.let { topBar.addView(it) }
-                    endBar?.removeAllViews()
-                    endBar?.layoutParams?.height = WRAP_CONTENT
-                    endBar?.addView(createInputContainer())
-                    endBar?.addView(createEndBarContainer())
-                }
+                isPageBack = false
+                topBar.removeAllViews()
+                getTopBarComponent()?.let { topBar.addView(it) }
+                endBar?.removeAllViews()
+                endBar?.layoutParams?.height = WRAP_CONTENT
+                endBar?.addView(createInputContainer())
+                endBar?.addView(createEndBarContainer())
             }
             setOnBackClickListener {
-                post {
-                    topBar.removeAllViews()
-                    userAvatar?.let { topBar.addView(it) }
-                    CRStatus?.let { topBar.addView(it) }
-                    endBar?.removeAllViews()
-                    endBar?.layoutParams?.height = 40.dp
-                    endBarContainer?.let { endBar?.addView(it) }
-                }
+                handleCRPageContentBack()
             }
         }
         CRStatus = chatRoomContent.setRoomStatus()
@@ -211,7 +216,7 @@ class MainScreen(
                 WRAP_CONTENT, 
                 WRAP_CONTENT
             ).apply {
-                gravity = Gravity.CENTER_VERTICAL
+                gravity = CENTER_VERTICAL
             }
             addView(this, 40.dp, 40.dp)
         }
@@ -337,7 +342,7 @@ class MainScreen(
         endBarContainer = LinearLayout(context).apply {
             layoutParams = LayoutParams(MATCH_PARENT, MATCH_PARENT)
             orientation = HORIZONTAL
-            gravity = Gravity.CENTER
+            gravity = CENTER
 
             createEndBarItem(R.drawable.comment, "聊天室", 0) {
                 if (previousTabIndex != 0) {
@@ -374,7 +379,7 @@ class MainScreen(
         return LinearLayout(context).apply {
             layoutParams = LayoutParams(0, MATCH_PARENT, 1f)
             orientation = VERTICAL
-            gravity = Gravity.CENTER
+            gravity = CENTER
             setOnClickListener {
                 previousTabIndex = selectedTabIndex
                 selectedTabIndex = index
@@ -397,7 +402,7 @@ class MainScreen(
             MaterialTextView(context).apply {
                 this.text = text
                 textSize = 10f
-                gravity = Gravity.CENTER
+                gravity = CENTER
                 layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                     topMargin = 2.dp
                 }
@@ -499,4 +504,48 @@ class MainScreen(
 
         performSlideTransition(oldTabView, newTabView)
     }
+
+    private fun onChatRoomBack(): Boolean {
+        return if (!isPageBack) {
+            handleCRPageContentBack()
+            true
+        } else handlePageBack()
+    }
+
+    private fun onCEPageBack(): Boolean {
+        return if (!isPageBack) {
+            true
+        } else handlePageBack()
+    }
+
+    private fun onHomePageBack(): Boolean {
+        return if (!isPageBack) {
+            true
+        } else handlePageBack()
+    }
+
+    private fun handlePageBack(): Boolean {
+        return if (selectedTabIndex == 0) false
+        else {
+            previousTabIndex = selectedTabIndex
+            selectedTabIndex = 0
+            onUserAvatar = true
+            onBackToMain = false
+            updateEndBarItems()
+            updateBarState()
+            true
+        }
+    }
+
+    private fun handleCRPageContentBack() {
+        isPageBack = true
+        topBar.removeAllViews()
+        userAvatar?.let { topBar.addView(it) }
+        CRStatus?.let { topBar.addView(it) }
+        endBar?.removeAllViews()
+        endBar?.layoutParams?.height = 40.dp
+        endBarContainer?.let { endBar?.addView(it) }
+        chatRoomContent.onReturnToMain()
+    }
+
 }

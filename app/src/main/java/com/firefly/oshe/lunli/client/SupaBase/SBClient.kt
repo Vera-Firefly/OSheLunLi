@@ -222,6 +222,23 @@ object SBClient {
         }
     }
 
+    suspend fun subscribeAnnouncement(date: String): List<Announcement> {
+        return withContext(Dispatchers.IO) {
+            try {
+                client.from("announcement")
+                    .select {
+                        filter {
+                            gt("date", date)
+                        }
+                        order("created_at", Order.ASCENDING)
+                    }
+                    .decodeList<Announcement>()
+            } catch (e: ErrnoException) {
+                emptyList()
+            }
+        }
+    }
+
     @Serializable
     data class User(val id: String, val name: String, val image: String)
 
@@ -267,5 +284,11 @@ object SBClient {
         val created_at: String
     )
 
+    @Serializable
+    data class Announcement(
+        val date: String,
+        val body: String,
+        val created_at: String
+    )
 }
 

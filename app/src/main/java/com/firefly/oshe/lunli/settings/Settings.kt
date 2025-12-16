@@ -1,6 +1,6 @@
 package com.firefly.oshe.lunli.settings
 
-import com.firefly.oshe.lunli.settings.interfaces.SettingsRegistry
+import com.firefly.oshe.lunli.GlobalInterface.settings.SettingsRegistry
 
 private val settings get() = SettingsRegistry.get()
 

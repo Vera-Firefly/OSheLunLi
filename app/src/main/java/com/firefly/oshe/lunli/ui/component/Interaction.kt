@@ -8,8 +8,8 @@ import android.net.Uri
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout.LayoutParams
 import androidx.core.content.ContextCompat
-import com.firefly.oshe.lunli.GlobalInterface.ImageSelectionManager
-import com.firefly.oshe.lunli.GlobalInterface.SimpleImageCallback
+import com.firefly.oshe.lunli.GlobalInterface.imageHelper.ImageSelectionManager
+import com.firefly.oshe.lunli.GlobalInterface.imageHelper.SimpleImageCallback
 import com.firefly.oshe.lunli.MainActivity
 import com.firefly.oshe.lunli.R
 import com.firefly.oshe.lunli.Tools.ShowToast

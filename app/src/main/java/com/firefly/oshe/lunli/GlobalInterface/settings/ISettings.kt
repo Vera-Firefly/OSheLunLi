@@ -1,4 +1,4 @@
-package com.firefly.oshe.lunli.settings.interfaces
+package com.firefly.oshe.lunli.GlobalInterface.settings
 
 /**
  * 设置项接口
