@@ -240,10 +240,16 @@ object SBClient {
     }
 
     @Serializable
-    data class User(val id: String, val name: String, val image: String)
+    data class User(
+        val id: String,
+        val name: String,
+        val image: String
+    )
 
     @Serializable
-    data class RoomId(val id: String)
+    data class RoomId(
+        val id: String
+    )
 
     @Serializable
     data class NewMessage(

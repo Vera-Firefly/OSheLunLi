@@ -16,4 +16,9 @@
     <item name="update_version_name" type="id" />
     <item name="update_content" type="id" />
     <item name="update_time" type="id" />
+
+    <!-- 公告页ID -->
+    <item name="ann_date" type="id" />
+    <item name="ann_body" type="id" />
+    <item name="ann_time" type="id" />
 </resources>
