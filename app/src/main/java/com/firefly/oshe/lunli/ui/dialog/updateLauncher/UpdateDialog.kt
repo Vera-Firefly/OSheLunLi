@@ -19,14 +19,12 @@ import com.firefly.oshe.lunli.ui.popup.PopupManager
 import com.firefly.oshe.lunli.ui.screens.components.UpdateAdapterView
 import kotlin.text.toInt
 
-class UpdateDialog {
+class UpdateDialog(private val context: Context) {
 
     fun onUpdateDialog(
-        context: Context,
         versions: List<NewVersion>,
         call: (Int) -> Unit = {}
     ) {
-        fun dpToPx(dp: Int): Int = (dp * context.resources.displayMetrics.density).toInt()
         val interaction = Interaction(context)
         val view: View = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -58,7 +56,7 @@ class UpdateDialog {
             val recyclerView = RecyclerView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    dpToPx(400)
+                    interaction.dpToPx(400)
                 ).apply {
                     setMargins(8.dp, 16.dp, 8.dp, 16.dp)
                 }
@@ -138,7 +136,7 @@ class UpdateDialog {
         PopupManager.show(view, false)
     }
 
-    fun InstallDialog(context: Context, path: String, call: (Int) -> Unit = {}) {
+    fun InstallDialog(path: String, call: (Int) -> Unit = {}) {
         val interaction = Interaction(context)
         val view: View = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL

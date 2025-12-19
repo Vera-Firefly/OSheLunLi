@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AnnApi {
-    fun getInfo(date: String, call: (List<Announcement>) -> Unit = {}) {
+    fun getInfo(date: String, call: (List<Announcement>) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             val fetchedAnns = mutableListOf<Announcement>()
             val newAnn : List<SBClient.Announcement> = SBClient.subscribeAnnouncement(date)

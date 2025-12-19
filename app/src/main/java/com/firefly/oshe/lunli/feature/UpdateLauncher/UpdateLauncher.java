@@ -3,7 +3,6 @@ package com.firefly.oshe.lunli.feature.UpdateLauncher;
 import static com.firefly.oshe.lunli.Tools.Toast;
 import static com.firefly.oshe.lunli.settings.SettingsKt.*;
 
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -44,6 +43,7 @@ public class UpdateLauncher {
     private final File dir;
     private final int APP_VERSION;
     private final UpdateDialog updateDialog;
+    private final UpdateLauncherApi updateLauncherApi = new UpdateLauncherApi();
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private volatile boolean isCancelled = false;
@@ -52,26 +52,19 @@ public class UpdateLauncher {
         this.context = context;
         this.dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Launcher");
         this.APP_VERSION = Integer.parseInt(context.getString(R.string.version_code));
-        this.updateDialog = new UpdateDialog();
+        this.updateDialog = new UpdateDialog(context);
     }
+
     public void checkForUpdates(boolean ignore) {
         if (!dir.exists() && !dir.mkdirs()) {
             handleException(new IOException("Unable to create directory: " + dir.getAbsolutePath()));
             return;
         }
 
-        executor.execute(() -> {
-            fetchReleaseInfo(new UpdateCheckCallback() {
-                public void onSuccess(JSONObject releaseInfo) {
-                    handleUpdateCheck(releaseInfo, ignore);
-                }
-
-                @Override
-                public void onError(Exception e) {
-                    handleException(e);
-                }
-            });
-        });
+        executor.execute(() -> fetchReleaseInfo(new UpdateCheckCallback() {
+            public void onSuccess(JSONObject releaseInfo) {handleUpdateCheck(releaseInfo, ignore);}
+            public void onError(Exception e) {handleException(e);}
+        }));
     }
 
     interface UpdateCheckCallback {
@@ -80,46 +73,42 @@ public class UpdateLauncher {
     }
 
     private void fetchReleaseInfo(UpdateCheckCallback callback) {
-        UpdateLauncherApi api = new UpdateLauncherApi() {};
-        api.getInfo(String.valueOf(APP_VERSION), new Function1<List<NewVersion>, Unit>() {
-            @Override
-            public Unit invoke(List<NewVersion> newVersions) {
-                try {
-                    JSONObject result = new JSONObject();
-                    JSONArray versionsArray = new JSONArray();
+        updateLauncherApi.getInfo(String.valueOf(APP_VERSION), newVersions -> {
+            try {
+                JSONObject result = new JSONObject();
+                JSONArray versionsArray = new JSONArray();
 
-                    newVersions.sort((v1, v2) -> v2.getCreated_at().compareTo(v1.getCreated_at()));
+                newVersions.sort((v1, v2) -> v2.getCreated_at().compareTo(v1.getCreated_at()));
 
-                    for (NewVersion version : newVersions) {
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("tag_name", version.getTag_name())
-                                .put("name", version.getName())
-                                .put("body", version.getBody())
-                                .put("url", version.getUrl())
-                                .put("created_at", version.getCreated_at());
-                        versionsArray.put(jsonObject);
-                    }
-
-                    result.put("versions", versionsArray);
-                    result.put("count", newVersions.size());
-                    // result.put("has_update", !newVersions.isEmpty()); 也许后面优化会用到?
-
-                    if (!newVersions.isEmpty()) {
-                        NewVersion latest = newVersions.get(0);
-                        result.put("latest_tag_name", latest.getTag_name());
-                        result.put("latest_name", latest.getName());
-                        result.put("latest_body", latest.getBody());
-                        result.put("latest_url", latest.getUrl());
-                        result.put("latest_created_at", latest.getCreated_at());
-                    }
-
-                    callback.onSuccess(result);
-
-                } catch (JSONException e) {
-                    callback.onError(e);
+                for (NewVersion version : newVersions) {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("tag_name", version.getTag_name())
+                            .put("name", version.getName())
+                            .put("body", version.getBody())
+                            .put("url", version.getUrl())
+                            .put("created_at", version.getCreated_at());
+                    versionsArray.put(jsonObject);
                 }
-                return Unit.INSTANCE;
+
+                result.put("versions", versionsArray)
+                    .put("count", newVersions.size());
+                // result.put("has_update", !newVersions.isEmpty()); 也许后面优化会用到?
+
+                if (!newVersions.isEmpty()) {
+                    NewVersion latest = newVersions.get(0);
+                    result.put("latest_tag_name", latest.getTag_name())
+                        .put("latest_name", latest.getName())
+                        .put("latest_body", latest.getBody())
+                        .put("latest_url", latest.getUrl())
+                        .put("latest_created_at", latest.getCreated_at());
+                }
+
+                callback.onSuccess(result);
+
+            } catch (JSONException e) {
+                callback.onError(e);
             }
+            return Unit.INSTANCE;
         });
     }
 
@@ -193,7 +182,7 @@ public class UpdateLauncher {
         try {
             int remoteVersion = Integer.parseInt(tagName);
             String apkUrl = String.format(RELEASE_URL, tagName);
-            updateDialog.onUpdateDialog(context, versionList, result -> {
+            updateDialog.onUpdateDialog(versionList, result -> {
                 handleUpdateResult(result, remoteVersion, apkUrl, tagName);
                 return Unit.INSTANCE;
             });
@@ -283,7 +272,7 @@ public class UpdateLauncher {
     }
 
     private void showInstallDialog(File apkFile) {
-        updateDialog.InstallDialog(context, apkFile.getAbsolutePath(), call -> {
+        updateDialog.InstallDialog(apkFile.getAbsolutePath(), call -> {
             handleInstallResult(call, apkFile);
             return Unit.INSTANCE;
         });

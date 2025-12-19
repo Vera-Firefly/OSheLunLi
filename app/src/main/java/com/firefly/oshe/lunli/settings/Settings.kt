@@ -22,8 +22,8 @@ var SAVED_IGNORE_APP_VERSION: Int
         settings._SAVED_IGNORE_APP_VERSION = value
     }
 
-var ANNOUNCEMENT_DONE: Boolean
-    get() = settings._ANNOUNCEMENT_DONE
+var SAVED_ANN_VERSION: Int
+    get() = settings._SAVED_ANN_VERSIOON
     set(value) {
-        settings._ANNOUNCEMENT_DONE = value
+        settings._SAVED_ANN_VERSIOON = value
     }

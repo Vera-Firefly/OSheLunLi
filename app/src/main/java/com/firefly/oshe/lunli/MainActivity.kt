@@ -9,9 +9,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Color.BLACK
-import android.graphics.Color.GRAY
-import android.graphics.Color.WHITE
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -21,19 +18,11 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.Gravity
-import android.view.Gravity.CENTER
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.LinearLayout.HORIZONTAL
-import android.widget.LinearLayout.LayoutParams
-import android.widget.LinearLayout.VERTICAL
-import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.firefly.oshe.lunli.GlobalInterface.imageHelper.ImagePicker
@@ -45,7 +34,6 @@ import com.firefly.oshe.lunli.data.UserDataPref
 import com.firefly.oshe.lunli.data.UserInformation
 import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.feature.UpdateLauncher.UpdateLauncher
-import com.firefly.oshe.lunli.settings.ANNOUNCEMENT_DONE
 import com.firefly.oshe.lunli.GlobalInterface.settings.SettingsRegistry
 import com.firefly.oshe.lunli.GlobalInterface.BackEventPublisher
 import com.firefly.oshe.lunli.ui.component.Interaction
@@ -122,57 +110,6 @@ class MainActivity : Activity() {
                 setContentView(container)
                 initMainView()
             }
-        }
-    }
-
-    private fun announcement(): View {
-        return LinearLayout(this).apply {
-            orientation = VERTICAL
-            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
-                setMargins(10, 10, 10, 10)
-            }
-
-            background = GradientDrawable().apply {
-                setColor(WHITE)
-                this.cornerRadius = 8f
-            }
-
-            TextView(context).apply {
-                text = "公告"
-                textSize = 18f
-                setTextColor(BLACK)
-                gravity = CENTER
-                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                    setMargins(0, 10, 0, 10)
-                }
-            }.also { addView(it) }
-
-            TextView(context).apply {
-                text = "自动更新功能已经上架, 后继有更新时可选择APP内下载或点击更新日志中的下载链接下载\nPS: 啊啊啊啊啊啊啊啊啊, 这么一个功能写了我好几天, 想抄以前写过的还抄不了, 只能从头开始, 累死我了"
-                textSize = 14f
-                isSingleLine = false
-                setTextColor(GRAY)
-                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                    setMargins(24, 10, 24, 10)
-                }
-            }.also { addView(it) }
-
-            val buttonLayout = LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                    setPadding(8.dp, 0, 8.dp, 4.dp)
-                }
-                gravity = Gravity.END or Gravity.CENTER_VERTICAL
-            }
-
-            interaction.createButton("确认(不再显示)", R.color.light_blue) {
-                PopupManager.dismiss()
-                ANNOUNCEMENT_DONE = true
-            }.apply {
-                layoutParams = LayoutParams(WRAP_CONTENT,  WRAP_CONTENT)
-            }.also { buttonLayout.addView(it) }
-
-            addView(buttonLayout)
         }
     }
 
@@ -310,9 +247,8 @@ class MainActivity : Activity() {
                 showLoginScreen(0)
             }
 
-            if (!ANNOUNCEMENT_DONE) PopupManager.show(announcement())
-
             updateLauncher.checkForUpdates(true)
+
         } finally {
             println("All View Done")
         }

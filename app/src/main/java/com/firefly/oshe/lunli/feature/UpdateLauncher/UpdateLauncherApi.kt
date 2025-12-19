@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-abstract class UpdateLauncherApi {
+class UpdateLauncherApi {
     fun getInfo(version: String, callback: (List<NewVersion>) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             val fetchedVersions = mutableListOf<NewVersion>()

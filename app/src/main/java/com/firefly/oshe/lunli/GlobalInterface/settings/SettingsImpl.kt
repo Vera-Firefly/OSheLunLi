@@ -42,7 +42,7 @@ internal class SettingsImpl(
     private var _lastAppVersion: Int = 100
     private var _cachedAppVersion: Int = 0
     private var _savedIgnoreAppVersion: Int = 0
-    private var _announcementDone: Boolean = false
+    private var _savedAnnVersion: Int = 0
 
     // ISettings接口实现
     override var _LAST_APP_VERSION: Int
@@ -66,11 +66,11 @@ internal class SettingsImpl(
             saveSync(SettingsKey.SAVED_IGNORE_APP_VERSION, value)
         }
 
-    override var _ANNOUNCEMENT_DONE: Boolean
-        get() = _announcementDone
+    override var _SAVED_ANN_VERSIOON: Int
+        get() = _savedAnnVersion
         set(value) {
-            _announcementDone = value
-            saveSync(SettingsKey.ANNOUNCEMENT_DONE, value)
+            _savedAnnVersion = value
+            saveSync(SettingsKey.SAVED_ANN_VERSION, value)
         }
 
     // 懒得给注释, 看不懂别看了, 回去睡觉
@@ -93,9 +93,9 @@ internal class SettingsImpl(
                 0
             )
 
-            _announcementDone = settingsManager.getBoolean(
-                SettingsKey.ANNOUNCEMENT_DONE,
-                false
+            _savedAnnVersion = settingsManager.getInt(
+                SettingsKey.SAVED_ANN_VERSION,
+                0
             )
 
             isPreloaded.set(true)

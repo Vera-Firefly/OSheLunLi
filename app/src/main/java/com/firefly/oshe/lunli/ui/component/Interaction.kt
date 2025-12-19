@@ -21,6 +21,8 @@ import com.google.android.material.textfield.TextInputLayout
 
 class Interaction(private val context: Context) {
 
+    fun dpToPx(dp: Int): Int = (dp * context.resources.displayMetrics.density).toInt()
+
     fun createButton(text: String, color: Int, onClick: () -> Unit): MaterialButton {
         return MaterialButton(context).apply {
             this.text = text
