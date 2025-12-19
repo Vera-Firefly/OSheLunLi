@@ -85,8 +85,13 @@ class MainActivity : Activity() {
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         setContentView(launchAppView)
 
-        launchAppView.setScreenSize(2712, 1220)
-        launchAppView.startRenderView()
+        launchAppView.post {
+            launchAppView.setScreenSize(
+                resources.displayMetrics.widthPixels,
+                resources.displayMetrics.heightPixels
+            )
+            launchAppView.startRenderView()
+        }
 
         SettingsRegistry.initialize(this)
 

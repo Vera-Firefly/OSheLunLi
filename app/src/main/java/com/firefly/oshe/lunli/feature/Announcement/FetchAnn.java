@@ -96,7 +96,7 @@ public class FetchAnn {
     private void handleAnns(JSONObject info) throws JSONException, IOException {
         JSONArray versionsArray = info.getJSONArray("versions");
         List<Announcement> allVersions = new ArrayList<>();
-        int resultVersion = Integer.parseInt(info.getString("atest_date"));
+        int resultVersion = Integer.parseInt(info.getString("latest_date"));
 
         for (int i = 0; i < versionsArray.length(); i++) {
             JSONObject versionObj = versionsArray.getJSONObject(i);
