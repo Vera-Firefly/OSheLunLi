@@ -78,6 +78,8 @@ class AnnDialog(private val context: Context) {
                 adapterView.addAnn(ann)
             }
 
+            addView(recyclerView)
+
             val buttonLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
@@ -89,7 +91,7 @@ class AnnDialog(private val context: Context) {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
             }
 
-            interaction.createButton("永久关闭", R.color.red_500) {
+            interaction.createButton("关闭", R.color.red_500) {
                 PopupManager.dismiss()
                 call(0)
             }.apply {
@@ -101,7 +103,7 @@ class AnnDialog(private val context: Context) {
                 }
             }.also { buttonLayout.addView(it) }
 
-            interaction.createButton("关闭", R.color.gray) {
+            interaction.createButton("确认", R.color.gray) {
                 PopupManager.dismiss()
                 call(1)
             }.apply {

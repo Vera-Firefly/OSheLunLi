@@ -14,6 +14,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -36,8 +39,8 @@ public class FetchAnn {
 
     public void checkForAnns() {
         executor.execute(() -> fetchAnnVersion(new AnnsCheckCall() {
-            public void onSuccess(JSONObject jsonObject) { }
-            public void onFailure(Exception e) { }
+            public void onSuccess(JSONObject jsonObject) { handleAnnCheck(jsonObject); }
+            public void onFailure(Exception e) { handleException(e); }
         }));
     }
 
@@ -79,6 +82,51 @@ public class FetchAnn {
             }
             return Unit.INSTANCE;
         });
+    }
+
+    private void handleAnnCheck(JSONObject info) {
+        try {
+            int remoteVersionCount = info.getInt("count");
+            if (remoteVersionCount != 0) handleAnns(info);
+        } catch (JSONException | IOException e) {
+            handleException(e);
+        }
+    }
+
+    private void handleAnns(JSONObject info) throws JSONException, IOException {
+        JSONArray versionsArray = info.getJSONArray("versions");
+        List<Announcement> allVersions = new ArrayList<>();
+        int resultVersion = Integer.parseInt(info.getString("atest_date"));
+
+        for (int i = 0; i < versionsArray.length(); i++) {
+            JSONObject versionObj = versionsArray.getJSONObject(i);
+            Announcement ann = new Announcement(
+                    versionObj.getString("date"),
+                    versionObj.getString("body"),
+                    versionObj.getString("created_at")
+            );
+            allVersions.add(ann);
+        }
+
+        new Handler(Looper.getMainLooper()).post(() -> showAnnDialog(allVersions, resultVersion));
+    }
+
+    private void showAnnDialog(List<Announcement> anns, int resultVersion) {
+        annDialog.onAnnDialog(anns, result -> {
+            handleAnnResult(result, resultVersion);
+            return Unit.INSTANCE;
+        });
+    }
+
+    private void handleAnnResult(int result, int resultVersion) {
+        switch (result) {
+            case 0:
+                setSAVED_ANN_VERSION(resultVersion);
+                break;
+            case 1:
+                // 暂时不处理
+                break;
+        }
     }
 
     private void handleException(Exception e) {

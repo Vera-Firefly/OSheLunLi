@@ -36,6 +36,7 @@ import com.firefly.oshe.lunli.data.UserInformationPref
 import com.firefly.oshe.lunli.feature.UpdateLauncher.UpdateLauncher
 import com.firefly.oshe.lunli.GlobalInterface.settings.SettingsRegistry
 import com.firefly.oshe.lunli.GlobalInterface.BackEventPublisher
+import com.firefly.oshe.lunli.feature.Announcement.FetchAnn
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.popup.PopupManager
 import com.firefly.oshe.lunli.ui.popup.PopupOverlay
@@ -55,6 +56,7 @@ class MainActivity : Activity() {
 
     private lateinit var context: Context
     private lateinit var updateLauncher: UpdateLauncher
+    private lateinit var fetchAnn: FetchAnn
     private lateinit var client: Client
     private lateinit var userDataPref: UserDataPref
     private lateinit var imagePicker: ImagePicker
@@ -104,6 +106,7 @@ class MainActivity : Activity() {
             userDataPref = UserDataPref(context)
             imagePicker = ImagePicker(this@MainActivity)
             updateLauncher = UpdateLauncher(context)
+            fetchAnn = FetchAnn(context)
 
             if (settings.isPreloaded()) {
                 launchAppView.stopRenderView()
@@ -248,7 +251,7 @@ class MainActivity : Activity() {
             }
 
             updateLauncher.checkForUpdates(true)
-
+            fetchAnn.checkForAnns()
         } finally {
             println("All View Done")
         }
