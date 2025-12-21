@@ -60,18 +60,13 @@ android {
     defaultConfig {
         applicationId = appPackageName
         minSdk = 29
-        versionCode = 1010
-        versionName = "1.0.10-devel"
+        versionCode = 10910
+        versionName = "1.0.9.1.0-devel"
 
         resValue("string", "version_code", "${versionCode}")
         vectorDrawables { 
             useSupportLibrary = true
         }
-    }
-    
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
     }
 
     buildTypes {
@@ -90,14 +85,19 @@ android {
 
     sourceSets["main"].java.srcDirs(generatedAppDir)
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
     buildFeatures {
         viewBinding = true
     }
     
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    kotlinOptions.jvmTarget = "11"
 }
 
 fun generateJavaClass(
