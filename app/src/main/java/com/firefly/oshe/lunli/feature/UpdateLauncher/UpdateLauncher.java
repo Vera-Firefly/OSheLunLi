@@ -31,7 +31,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kotlin.Unit;
-import kotlin.jvm.functions.Function1;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -208,7 +207,7 @@ public class UpdateLauncher {
     private void startDownloadFormGIT(String apkUrl, String tagName) {
         isCancelled = false;
         DownloadProgressView progressView = new DownloadProgressView(context);
-        progressView.setTitle("下载中...");
+        progressView.setTitle("下载更新中...");
 
         progressView.setOnDownloadListener(new DownloadProgressView.OnDownloadListener() {
             @Override

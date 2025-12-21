@@ -7,10 +7,12 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
-import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import com.firefly.oshe.lunli.dp
 import com.firefly.oshe.lunli.ui.component.Interaction
 import com.firefly.oshe.lunli.ui.popup.PopupManager
 
@@ -33,14 +35,15 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        layoutParams = ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            setMargins(10.dp, 10.dp, 10.dp, 10.dp)
+        }
 
         background = GradientDrawable().apply {
             setColor(Color.WHITE)
             this.cornerRadius = 8f
         }
 
-        setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
         initializeViews()
     }
 
@@ -50,38 +53,45 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
         titleTextView = TextView(context).apply {
             text = "下载中..."
             textSize = 18f
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setMargins(0, 8.dp, 0, 8.dp)
+            }
             gravity = Gravity.CENTER
             setTextColor(Color.BLACK)
-            setPadding(0, 0, 0, dpToPx(12))
         }
         addView(titleTextView)
 
+        val progressView = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setPadding(8.dp, 0, 8.dp, 0)
+            }
+        }
+
         progressBar = ProgressBar(context, null, R.attr.progressBarStyleHorizontal).apply {
-            layoutParams = LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dpToPx(8)
-            ).apply {
-                setMargins(0, dpToPx(4), 0, dpToPx(8))
+            layoutParams = LayoutParams(0, WRAP_CONTENT, 1f).apply {
+                marginEnd = 8.dp
             }
             max = 100
             progress = 0
         }
-        addView(progressBar)
+        progressView.addView(progressBar)
 
         progressTextView = TextView(context).apply {
             text = "0%"
             textSize = 14f
-            gravity = Gravity.CENTER
             setTextColor(Color.GRAY)
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
-                setMargins(0, 0, 0, dpToPx(12))
-            }
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         }
-        addView(progressTextView)
+        progressView.addView(progressTextView)
+
+        addView(progressView)
 
         val buttonContainer = LinearLayout(context).apply {
             orientation = HORIZONTAL
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                setPadding(8.dp, 8.dp, 8.dp, 8.dp)
+            }
             gravity = Gravity.END
         }
 
@@ -90,7 +100,7 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
             isCancelled = true
             listener?.onCancel()
         }.apply {
-            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         }.also { buttonContainer.addView(it) }
 
         addView(buttonContainer)
@@ -126,9 +136,5 @@ class DownloadProgressView(context: Context) : LinearLayout(context) {
             progressBar.progress = 0
             progressTextView.text = "0%"
         }
-    }
-
-    private fun dpToPx(dp: Int): Int {
-        return (dp * context.resources.displayMetrics.density).toInt()
     }
 }

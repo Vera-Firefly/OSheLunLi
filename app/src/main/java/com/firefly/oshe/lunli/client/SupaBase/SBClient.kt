@@ -216,7 +216,7 @@ object SBClient {
                         order("created_at", Order.ASCENDING)
                     }
                     .decodeList<NewVersion>()
-            } catch (e : ErrnoException) {
+            } catch (e : Exception) {
                 emptyList()
             }
         }
@@ -233,7 +233,7 @@ object SBClient {
                         order("created_at", Order.ASCENDING)
                     }
                     .decodeList<Announcement>()
-            } catch (e: ErrnoException) {
+            } catch (e: Exception) {
                 emptyList()
             }
         }
