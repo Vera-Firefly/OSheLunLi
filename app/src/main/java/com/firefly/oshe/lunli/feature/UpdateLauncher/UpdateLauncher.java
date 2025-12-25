@@ -50,7 +50,7 @@ public class UpdateLauncher {
     public UpdateLauncher(Context context) {
         this.context = context;
         this.dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Launcher");
-        this.APP_VERSION = 100;//Integer.parseInt(context.getString(R.string.version_code));
+        this.APP_VERSION = Integer.parseInt(context.getString(R.string.version_code));
         this.updateDialog = new UpdateDialog(context);
     }
 

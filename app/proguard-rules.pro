@@ -31,5 +31,6 @@
 
 -keep class org.slf4j.** { *; }
 -dontwarn org.slf4j.**
+-dontwarn org.commonmark.ext.gfm.strikethrough.Strikethrough
 
 -keep class com.firefly.oshe.lunli.** { *; }
