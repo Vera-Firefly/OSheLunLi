@@ -12,6 +12,7 @@ import io.noties.markwon.Markwon
 import io.noties.markwon.MarkwonConfiguration
 import io.noties.markwon.core.CorePlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.AsyncDrawable
 import io.noties.markwon.image.ImageSize
 import io.noties.markwon.image.ImageSizeResolver
@@ -31,6 +32,7 @@ object MarkdownRenderer {
             .usePlugin(GlideImagesPlugin.create(glide))
             .usePlugin(CorePlugin.create())
             .usePlugin(TablePlugin.create(context))
+            .usePlugin(HtmlPlugin.create())
             .usePlugin(object : AbstractMarkwonPlugin() {
                 override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
                     builder.imageSizeResolver(object : ImageSizeResolver() {
@@ -55,6 +57,11 @@ object MarkdownRenderer {
                             return Rect(0, 0, width, height)
                         }
                     })
+                }
+
+                override fun configureTheme(builder: io.noties.markwon.core.MarkwonTheme.Builder) {
+                    builder.headingBreakHeight(0)
+                        .headingBreakColor(0x00000000.toInt())
                 }
             })
             .build()
