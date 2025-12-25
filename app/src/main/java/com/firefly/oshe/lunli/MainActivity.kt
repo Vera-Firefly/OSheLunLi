@@ -81,10 +81,10 @@ class MainActivity : Activity() {
 
         context = this
 
-        val launchAppView = LaunchAppView(this)
+        // val launchAppView = LaunchAppView(this)
         container.layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-        setContentView(launchAppView)
-
+        setContentView(container)
+/*
         launchAppView.post {
             launchAppView.setScreenSize(
                 resources.displayMetrics.widthPixels,
@@ -92,6 +92,7 @@ class MainActivity : Activity() {
             )
             launchAppView.startRenderView()
         }
+ */
 
         SettingsRegistry.initialize(this)
 
@@ -114,8 +115,8 @@ class MainActivity : Activity() {
             fetchAnn = FetchAnn(context)
 
             if (settings.isPreloaded()) {
-                launchAppView.stopRenderView()
-                setContentView(container)
+                // launchAppView.stopRenderView()
+                // setContentView(container)
                 initMainView()
             }
         }
