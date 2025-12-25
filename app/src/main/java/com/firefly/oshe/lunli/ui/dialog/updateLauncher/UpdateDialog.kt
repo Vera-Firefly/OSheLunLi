@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout
+import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -28,7 +29,7 @@ class UpdateDialog(private val context: Context) {
         val interaction = Interaction(context)
         val view: View = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                 setMargins(10.dp, 10.dp, 10.dp, 10.dp)
             }
 
@@ -42,13 +43,13 @@ class UpdateDialog(private val context: Context) {
                 textSize = 18f
                 setTextColor(Color.BLACK)
                 gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setMargins(0, 8.dp, 0, 8.dp)
                 }
             }.also { addView(it) }
 
             val recyclerView = RecyclerView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, 450.dp).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, 450.dp).apply {
                     setMargins(8.dp, 0, 8.dp, 0)
                 }
 
@@ -74,7 +75,7 @@ class UpdateDialog(private val context: Context) {
 
             val buttonLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                     setPadding(8.dp, 8.dp, 8.dp, 8.dp)
                 }
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL
@@ -84,7 +85,7 @@ class UpdateDialog(private val context: Context) {
                 PopupManager.dismiss()
                 call(0)
             }.apply {
-                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                     marginEnd = 4.dp
                 }
             }.also { buttonLayout.addView(it) }
@@ -93,7 +94,7 @@ class UpdateDialog(private val context: Context) {
                 PopupManager.dismiss()
                 call(1)
             }.apply {
-                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
                     marginEnd = 4.dp
                 }
             }.also { buttonLayout.addView(it) }
@@ -102,13 +103,72 @@ class UpdateDialog(private val context: Context) {
                 PopupManager.dismiss()
                 call(2)
             }.apply {
-                layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+                layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
             }.also { buttonLayout.addView(it) }
 
             addView(buttonLayout)
         }
 
         PopupManager.show(view)
+    }
+
+    fun onDownloadSourceDialog(call: (Int) -> Unit) {
+        val interaction = Interaction(context)
+        val view: View = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply {
+                setMargins(10.dp, 10.dp, 10.dp, 10.dp)
+            }
+
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                this.cornerRadius = 8f
+            }
+
+            TextView(context).apply {
+                text = "选择下载源"
+                textSize = 18f
+                setTextColor(Color.BLACK)
+                gravity = Gravity.CENTER
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    setMargins(0, 8.dp, 0, 8.dp)
+                }
+            }.also { addView(it) }
+
+            View(context).apply {
+                setBackgroundColor(Color.LTGRAY)
+                layoutParams = LayoutParams(MATCH_PARENT, 1.dp).apply {
+                    topMargin = 4.dp
+                }
+            }.also { addView(it) }
+
+            val buttonLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    setPadding(8.dp, 0, 8.dp, 8.dp)
+                }
+            }
+
+            interaction.createButton("官方源", R.color.gray) {
+                PopupManager.dismiss()
+                call(0)
+            }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT, 1f).apply {
+                    marginEnd = 4.dp
+                }
+            }.also { buttonLayout.addView(it) }
+
+            interaction.createButton("加速源", R.color.light_blue) {
+                PopupManager.dismiss()
+                call(1)
+            }.apply {
+                layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT, 1f)
+            }.also { buttonLayout.addView(it) }
+
+            addView(buttonLayout)
+        }
+
+        PopupManager.show(view, false)
     }
 
     fun onProgressDialog(view: View) {

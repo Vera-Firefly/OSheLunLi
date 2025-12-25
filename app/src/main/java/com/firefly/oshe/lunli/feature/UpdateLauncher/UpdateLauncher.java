@@ -50,7 +50,7 @@ public class UpdateLauncher {
     public UpdateLauncher(Context context) {
         this.context = context;
         this.dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Launcher");
-        this.APP_VERSION = Integer.parseInt(context.getString(R.string.version_code));
+        this.APP_VERSION = 100;//Integer.parseInt(context.getString(R.string.version_code));
         this.updateDialog = new UpdateDialog(context);
     }
 
@@ -150,6 +150,7 @@ public class UpdateLauncher {
         List<NewVersion> allVersions = new ArrayList<>();
 
         String tagName = releaseInfo.getString("latest_tag_name");
+        String url = releaseInfo.getString("latest_url");
 
         for (int i = 0; i < versionsArray.length(); i++) {
             JSONObject versionObj = versionsArray.getJSONObject(i);
@@ -173,14 +174,19 @@ public class UpdateLauncher {
             new Handler(Looper.getMainLooper()).post(() -> showInstallDialog(apkFile));
         } else {
             deleteFileIfExists(apkFile);
-            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(allVersions, tagName));
+            new Handler(Looper.getMainLooper()).post(() -> showUpdateDialog(allVersions, tagName, url));
         }
     }
 
-    private void showUpdateDialog(List<NewVersion> versionList, String tagName) {
+    private void showUpdateDialog(List<NewVersion> versionList, String tagName, String url) {
         try {
             int remoteVersion = Integer.parseInt(tagName);
-            String apkUrl = String.format(RELEASE_URL, tagName);
+            String apiUrl = String.format(RELEASE_URL, tagName);
+
+            ArrayList<String> apkUrl = new ArrayList<>();
+            apkUrl.add(apiUrl);
+            apkUrl.add(url);
+
             updateDialog.onUpdateDialog(versionList, result -> {
                 handleUpdateResult(result, remoteVersion, apkUrl, tagName);
                 return Unit.INSTANCE;
@@ -190,7 +196,7 @@ public class UpdateLauncher {
         }
     }
 
-    private void handleUpdateResult(int result, int remoteVersion, String apkUrl, String tagName) {
+    private void handleUpdateResult(int result, int remoteVersion, ArrayList<String> apkUrl, String tagName) {
         switch (result) {
             case 0:
                 showToast("更新将在下一次进入软件时推送");
@@ -199,12 +205,19 @@ public class UpdateLauncher {
                 setSAVED_IGNORE_APP_VERSION(remoteVersion);
                 break;
             case 2:
-                startDownloadFormGIT(apkUrl, tagName);
+                chooseDownloadSource(apkUrl, tagName);
                 break;
         }
     }
 
-    private void startDownloadFormGIT(String apkUrl, String tagName) {
+    private void chooseDownloadSource(ArrayList<String> apkUrl, String tagName) {
+        updateDialog.onDownloadSourceDialog(result -> {
+            startDownload(apkUrl.get(result), tagName);
+            return Unit.INSTANCE;
+        });
+    }
+
+    private void startDownload(String apkUrl, String tagName) {
         isCancelled = false;
         DownloadProgressView progressView = new DownloadProgressView(context);
         progressView.setTitle("下载更新中...");
